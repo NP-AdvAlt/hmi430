@@ -15,18 +15,24 @@ function Get-MtpScreenshot {
 
     # Find HMI430 MTP device under "This PC" (namespace 17)
     $device = $shell.NameSpace(17).Items() |
-              Where-Object { $_.Name -match 'AegisTec|SPLat|HMI' } |
+              Where-Object { $_.Name -match 'AegisTec|SPLat|HMI|AV430' } |
               Select-Object -First 1
     if (-not $device) { throw "HMI430 MTP device not found. Check USB connection." }
 
-    # Navigate to Internal Storage
-    $storage = $shell.NameSpace($device.Path).Items() |
+    # Navigate to Internal Storage using GetFolder (required for MTP virtual paths)
+    $devFolder = $device.GetFolder
+    if (-not $devFolder) { throw "Cannot open device folder." }
+
+    $storage = $devFolder.Items() |
                Where-Object { $_.Name -match 'Internal Storage' } |
                Select-Object -First 1
     if (-not $storage) { throw "Internal Storage not found on device." }
 
+    $storageFolder = $storage.GetFolder
+    if (-not $storageFolder) { throw "Cannot open Internal Storage folder." }
+
     # Find the screenshot file (sshot000.png, sshot001.png, etc.)
-    $sshot = $shell.NameSpace($storage.Path).Items() |
+    $sshot = $storageFolder.Items() |
              Where-Object { $_.Name -match '^sshot\d+\.png$' } |
              Select-Object -First 1
     if (-not $sshot) { throw "No sshot*.png found in Internal Storage. Device may not be ready." }

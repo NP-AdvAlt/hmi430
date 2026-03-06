@@ -22,7 +22,7 @@ $comPort = $null
 # Auto-detect CH340 CNC port
 $cnc = Get-PnpDevice | Where-Object { $_.FriendlyName -match 'CH340' -and $_.Status -eq 'OK' } | Select-Object -First 1
 if ($cnc) {
-    $comPort = ($cnc.FriendlyName -match 'COM(\d+)') ? "COM$($Matches[1])" : $null
+    if ($cnc.FriendlyName -match 'COM(\d+)') { $comPort = "COM$($Matches[1])" }
 }
 if (-not $comPort) {
     # Fallback: try common ports
@@ -130,25 +130,27 @@ try {
     }
 
     # ---------------------------------------------------------------------------
-    # Full retract at end, power off
+    # Full retract at end
     # ---------------------------------------------------------------------------
     Write-Host "Full retract..."
     Send-Gcode "G0 Z$safeZ" 1000
     Wait-Idle
+
+    # ---------------------------------------------------------------------------
+    # MTP screenshot (device must still be powered on)
+    # ---------------------------------------------------------------------------
+    Write-Host ""
+    Write-Host "Taking MTP screenshot..."
+    $shotPath = Get-MtpScreenshot -OutDir $outDir
+    Write-Host "Screenshot saved: $shotPath"
+
+    # Power off after screenshot
     Write-Host "Powering off HMI430..."
     Send-Gcode "M5" 300
 
 } finally {
     if ($port -and $port.IsOpen) { $port.Close() }
 }
-
-# ---------------------------------------------------------------------------
-# MTP screenshot
-# ---------------------------------------------------------------------------
-Write-Host ""
-Write-Host "Taking MTP screenshot..."
-$shotPath = Get-MtpScreenshot -OutDir $outDir
-Write-Host "Screenshot saved: $shotPath"
 
 # ---------------------------------------------------------------------------
 # Brightness analysis — detect which zones turned white
