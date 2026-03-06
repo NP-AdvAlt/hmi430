@@ -1,0 +1,57 @@
+;===============================================================================
+;                          Advancing Alternatives                             ;
+;                      TecPlus Greenhouse Controller                          ;
+;                            v1.2.3 Build                                     ;
+;===============================================================================
+;
+;DESCRIPTION:
+; App build file for the multi-module TecPlus project.
+; New compiler requires POWERONSEG -> INITSEG -> LAUNCHSEG execution flow.
+;
+;===============================================================================
+CONSTSEG                                              ;Constants and color palette
+MEQUSEG                                               ;PermStore absolutes (mEQU)
+DEF_SEM                                               ;defSEM directives
+DEF_BYTE                                              ;defBYTE directives
+DEF_FLOAT                                             ;defFLOAT directives
+POWERONSEG ONEONLY                                    ;First code at power on (PermRecall etc.)
+INITSEG                                               ;Module initialization (boot sequence, task launches)
+LAUNCHSEG ONEONLY                                     ;RunTaskSForever
+CODESEG                                               ;Main application code (all tasks)
+NVEM0DATA                                             ;Non-volatile memory defaults
+
+
+;===============================================================================
+;
+; FILE LIST
+;
+;===============================================================================
+#---                                                  ;Special marker that identifies the start of the file list
+config.spt
+permmem.spt
+variables.spt
+launch.spt
+helpers.spt
+outputs.spt
+temperature.spt
+wind.spt
+dif.spt
+dep.spt
+curtains.spt
+fans.spt
+heaters.spt
+hvls.spt
+grow_lights.spt
+dehumidifier.spt
+energy_curtains.spt
+web_dashboard.spt
+ui.spt
+ui_main.spt
+ui_override.spt
+ui_clock.spt
+ui_dif_dep.spt
+ui_parameters.spt
+ui_test.spt
+nvem_defaults.spt
+serial.spt
+gateway_comms.spt

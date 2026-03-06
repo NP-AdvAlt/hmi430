@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>RS485 Modbus Test Tool</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body{ margin:0; font-family:Arial, sans-serif; background:#f4f6f9; color:#222; }
+  #layout{ display:grid; grid-template-columns:420px 1fr; grid-template-rows:45vh 55vh; height:100vh; }
+
+  #left{ grid-row:1 / span 2; padding:14px; border-right:1px solid #ccc; overflow:auto; }
+  .card{ background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px; margin-bottom:10px; }
+  .row{ display:flex; flex-wrap:wrap; align-items:center; }
+  .smallLabel{ font-size:12px; color:#444; margin-left:6px; }
+
+  input,select,button{
+    padding:6px; margin:3px;
+    border:1px solid #bbb; border-radius:4px;
+    background:#fff;
+  }
+  button{ background:#e8eef7; cursor:pointer; }
+  button:hover{ background:#d7e3f6; }
+  input[type="color"]{ padding:0; width:34px; height:32px; border-radius:4px; }
+
+  #debug{ padding:10px; border-bottom:1px solid #ccc; overflow:hidden; background:#f9fafb; }
+  #log{
+    height:170px; background:#fff; border:1px solid #ccc; overflow:auto;
+    font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size:12px; padding:6px; border-radius:4px;
+  }
+
+  #chartWrap{ padding:10px; overflow:hidden; }
+  #chartBox{ background:#fff; border:1px solid #ccc; border-radius:6px; height:100%; padding:10px; }
+  canvas{ display:block; width:100% !important; height:100% !important; }
+
+  .divider{ height:1px; background:#ddd; margin:8px 0; }
+  .chRow{ width:100%; padding:6px 0; border-bottom:1px dashed #eee; }
+  .chRow:last-child{ border-bottom:none; }
+
+  .pill{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef2ff; border:1px solid #c7d2fe; margin-left:6px;}
+</style>
+</head>
+
+<body>
+<div id="layout">
+
+  <div id="left">
+
+    <div class="card">
+      <b>Connection</b><br>
+      <button id="connectBtn">Connect</button>
+      <select id="baud">
+        <option>2400</option>
+        <option selected>4800</option>
+        <option>9600</option>
+        <option>19200</option>
+      </select>
+      <span class="smallLabel" id="connState">Disconnected</span>
+      <span class="pill">Web Serial</span>
+    </div>
+
+    <div class="card">
+      <b>Profiles</b><br>
+      <div class="row">
+        <input id="profileName" placeholder="Profile name" size="16">
+        <button id="saveProfileBtn">Save</button>
+      </div>
+      <div class="row">
+        <select id="profileSelect" style="min-width:220px;"></select>
+        <button id="loadProfileBtn">Load</button>
+        <button id="deleteProfileBtn">Delete</button>
+      </div>
+      <div class="smallLabel">Saved to browser storage (localStorage)</div>
+    </div>
+
+    <div class="card">
+      <b>Auto Detect</b><br>
+      <div class="row">
+        Addr <input id="detectStart" value="1" size="4">
+        to <input id="detectEnd" value="10" size="4">
+      </div>
+      <div class="row">
+        Func
+        <select id="detectFunc">
+          <option value="03">0x03 Holding</option>
+          <option value="04">0x04 Input</option>
+        </select>
+        <button id="scanBtn">Scan</button>
+      </div>
+      <div id="detectResults" class="smallLabel"></div>
+    </div>
+
+    <div class="card">
+      <b>Configured Devices</b>
+      <div id="deviceCards"></div>
+    </div>
+
+    <div class="card">
+      <b>Polling</b><br>
+      <div class="row">
+        <span class="smallLabel">Interval ms</span>
+        <input id="pollMs" value="1000" size="6">
+        <button id="startPoll">Start</button>
+        <button id="stopPoll">Stop</button>
+        <button id="clearGraphBtn">Clear/Reset</button>
+      </div>
+      <div class="row">
+        <span class="smallLabel">Y padding %</span>
+        <input id="yPadPct" value="10" size="4">
+        <span class="smallLabel">(axis headroom per channel)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <b>Write Address</b><br>
+      Old <input id="oldAddr" value="1" size="4">
+      New <input id="newAddr" value="2" size="4">
+      <button id="writeBtn">Write</button>
+      <div class="smallLabel">Writes reg 0x07D0 (function 0x06)</div>
+    </div>
+
+  </div>
+
+  <div id="debug">
+    <b>Manual Read</b><br>
+    <div class="row">
+      Addr <input id="manualAddr" value="1" size="4">
+      Func
+      <select id="manualFunc">
+        <option value="03">0x03 Holding</option>
+        <option value="04">0x04 Input</option>
+      </select>
+      Start <input id="manualStart" value="0" size="6">
+      Count <input id="manualCount" value="1" size="6">
+      <button id="manualRead">Read</button>
+    </div>
+    <div id="log"></div>
+  </div>
+
+  <div id="chartWrap">
+    <div id="chartBox">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =========================
+   Logging
+========================= */
+function log(msg){
+  const el=document.getElementById("log");
+  el.innerHTML += msg + "<br>";
+  el.scrollTop = el.scrollHeight;
+}
+function hexBytes(arr){
+  return arr.map(b=>b.toString(16).padStart(2,'0')).join(' ');
+}
+
+/* =========================
+   CRC + helpers
+========================= */
+function crc16(buf){
+  let crc=0xFFFF;
+  for(let b of buf){
+    crc^=b;
+    for(let i=0;i<8;i++){
+      if(crc&1) crc=(crc>>1)^0xA001;
+      else crc>>=1;
+    }
+  }
+  return crc & 0xFFFF;
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function u16(hi,lo){ return ((hi<<8)|lo) & 0xFFFF; }
+function s16(v){ v &= 0xFFFF; return (v & 0x8000) ? (v-0x10000) : v; }
+function u32FromRegsBE(r0, r1){ // r0 = high word, r1 = low word
+  return ((r0>>>0) * 65536 + (r1>>>0)) >>> 0;
+}
+function u32FromRegsLE(r0, r1){ // r0 = low word, r1 = high word
+  return ((r1>>>0) * 65536 + (r0>>>0)) >>> 0;
+}
+function s32(u){
+  u = u>>>0;
+  return (u & 0x80000000) ? (u - 0x100000000) : u;
+}
+
+/* =========================
+   Serial engine (buffered)
+========================= */
+let port=null, reader=null, writer=null;
+let rxBuffer=[];
+
+async function startReadLoop(){
+  while(true){
+    const {value,done} = await reader.read();
+    if(done) break;
+    if(value && value.length) rxBuffer.push(...value);
+    if(rxBuffer.length > 20000) rxBuffer.splice(0, rxBuffer.length - 20000);
+  }
+}
+
+function clearRx(){ rxBuffer.length = 0; }
+
+// Supports 0x03 and 0x04 same response framing.
+function tryExtractFrame(addr, func){
+  if(rxBuffer.length < 5) return null;
+
+  const idx = rxBuffer.indexOf(addr);
+  if(idx < 0) return null;
+  if(idx > 0) rxBuffer.splice(0, idx);
+  if(rxBuffer.length < 5) return null;
+
+  const f = rxBuffer[1];
+
+  // Exception: addr, func|0x80, code, crcLo, crcHi
+  if(f === (func | 0x80)){
+    if(rxBuffer.length < 5) return null;
+    return rxBuffer.splice(0, 5);
+  }
+
+  if(f !== func){
+    rxBuffer.splice(0,1);
+    return null;
+  }
+
+  // Read response: addr, func, byteCount, data..., crcLo, crcHi
+  if(func === 0x03 || func === 0x04){
+    if(rxBuffer.length < 3) return null;
+    const byteCount = rxBuffer[2];
+    const len = 3 + byteCount + 2;
+    if(rxBuffer.length < len) return null;
+    return rxBuffer.splice(0, len);
+  }
+
+  // Write single register response: fixed 8 bytes
+  if(func === 0x06){
+    if(rxBuffer.length < 8) return null;
+    return rxBuffer.splice(0, 8);
+  }
+
+  return null;
+}
+
+function crcOk(frame){
+  if(!frame || frame.length < 4) return false;
+  const got = frame[frame.length-2] | (frame[frame.length-1]<<8); // lo|hi
+  const data = frame.slice(0, frame.length-2);
+  return crc16(data) === got;
+}
+
+async function transaction(pdu, addr, func, timeoutMs=300){
+  clearRx();
+
+  const crc = crc16(pdu);
+  const frame = [...pdu, crc & 0xFF, (crc>>8)&0xFF];
+
+  // log TX
+  log(`<span style="color:#0a0">TX</span> ${hexBytes(frame)}`);
+
+  await writer.write(new Uint8Array(frame));
+  await sleep(15);
+
+  const end = Date.now() + timeoutMs;
+  while(Date.now() < end){
+    const f = tryExtractFrame(addr, func);
+    if(f){
+      if(!crcOk(f)){
+        log(`<span style="color:#b00">RX</span> CRC FAIL ${hexBytes(f)}`);
+        return null;
+      }
+      // exception
+      if(f[1] === (func | 0x80)){
+        log(`<span style="color:#b00">RX</span> EXC code=${f[2]} ${hexBytes(f)}`);
+        return null;
+      }
+      log(`<span style="color:#06c">RX</span> ${hexBytes(f)}`);
+      return f;
+    }
+    await sleep(5);
+  }
+  log(`<span style="color:#b00">RX</span> <timeout>`);
+  return null;
+}
+
+/* =========================
+   Modbus ops
+========================= */
+async function readRegs(addr, func, start, count){
+  const pdu=[addr,func,(start>>8)&0xFF,start&0xFF,(count>>8)&0xFF,count&0xFF];
+  const r = await transaction(pdu, addr, func, 350);
+  if(!r) return null;
+
+  const byteCount = r[2];
+  const expectedBytes = count * 2;
+  if(byteCount < expectedBytes){
+    // partial; still decode whatever is present
+  }
+
+  const vals=[];
+  for(let i=0;i<count;i++){
+    const hi=r[3+i*2];
+    const lo=r[4+i*2];
+    if(hi===undefined || lo===undefined) break;
+    vals.push(u16(hi,lo));
+  }
+  return vals;
+}
+
+async function writeAddr(oldA,newA){
+  const pdu=[oldA,0x06,0x07,0xD0,0x00,(newA & 0xFF)];
+  const r = await transaction(pdu, oldA, 0x06, 450);
+  return !!r;
+}
+
+/* =========================
+   Rounding + Filters
+========================= */
+const ROUND_OPTIONS = [
+  { label: "3 dp (0.001)", step: 0.001 },
+  { label: "2 dp (0.01)",  step: 0.01  },
+  { label: "1 dp (0.1)",   step: 0.1   },
+  { label: "Ones (1)",     step: 1     },
+  { label: "Tens (10)",    step: 10    },
+  { label: "Hundreds (100)",step: 100  },
+  { label: "Thousands (1000)",step:1000}
+];
+
+function roundToStep(x, step){
+  if(!Number.isFinite(x)) return x;
+  if(!step || step <= 0) return x;
+  return Math.round(x / step) * step;
+}
+
+function applyFilter(state, value, filterMode, windowN, weightK, alpha){
+  // state: { hist:[], prev: number|undefined }
+  if(!state.hist) state.hist = [];
+  state.hist.push(value);
+  if(state.hist.length > 500) state.hist.shift();
+
+  const n = Math.max(1, parseInt(windowN,10) || 1);
+
+  if(filterMode === "none") return value;
+
+  if(filterMode === "ma"){
+    const slice = state.hist.slice(-n);
+    const sum = slice.reduce((a,b)=>a+b,0);
+    return sum / slice.length;
+  }
+
+  if(filterMode === "wma"){
+    const slice = state.hist.slice(-n);
+    const k = Math.max(1, parseFloat(weightK) || 1);
+    // weights increase toward newest: 1..k linearly
+    let wSum=0, vSum=0;
+    const L = slice.length;
+    for(let i=0;i<L;i++){
+      const w = 1 + (i/(Math.max(1,L-1))) * (k-1);
+      wSum += w;
+      vSum += slice[i] * w;
+    }
+    return vSum / (wSum || 1);
+  }
+
+  if(filterMode === "ema"){
+    const a = Math.min(0.999, Math.max(0.001, parseFloat(alpha) || 0.3));
+    if(state.prev === undefined) state.prev = value;
+    state.prev = a * value + (1-a) * state.prev;
+    return state.prev;
+  }
+
+  return value;
+}
+
+/* =========================
+   Device config cards
+========================= */
+let devices = {};  // addr -> { start, count, func }
+let axisCount = 0;
+let sampleCounter = 0;
+
+function createDeviceCard(addr){
+  if(devices[addr]) return;
+
+  devices[addr] = { start:0, count:1, func:"03" };
+
+  const wrap=document.createElement("div");
+  wrap.className="card";
+  wrap.id="card_"+addr;
+
+  wrap.innerHTML=`
+    <div class="row" style="justify-content:space-between;">
+      <b>Device ${addr}</b>
+      <button id="remove_${addr}">Remove</button>
+    </div>
+
+    <div class="row">
+      <span class="smallLabel">Func</span>
+      <select id="func_${addr}">
+        <option value="03">0x03 Holding</option>
+        <option value="04">0x04 Input</option>
+      </select>
+      <span class="smallLabel">StartReg</span>
+      <input id="start_${addr}" value="0" size="5">
+      <span class="smallLabel">Count</span>
+      <input id="count_${addr}" value="1" size="5">
+      <button id="apply_${addr}">Apply</button>
+    </div>
+
+    <div class="divider"></div>
+    <div id="channels_${addr}"></div>
+  `;
+
+  document.getElementById("deviceCards").appendChild(wrap);
+
+  document.getElementById(`apply_${addr}`).onclick = ()=>rebuildChannels(addr);
+  document.getElementById(`remove_${addr}`).onclick = ()=>removeDevice(addr);
+
+  rebuildChannels(addr);
+}
+
+function removeDevice(addr){
+  delete devices[addr];
+
+  // remove datasets + axes tied to this addr
+  const keep=[];
+  for(const ds of chart.data.datasets){
+    if(!ds._key || !ds._key.startsWith(`a${addr}_`)) keep.push(ds);
+    else{
+      const axId = ds.yAxisID;
+      if(chart.options.scales && chart.options.scales[axId]) delete chart.options.scales[axId];
+    }
+  }
+  chart.data.datasets = keep;
+  chart.update("none");
+
+  const el=document.getElementById("card_"+addr);
+  if(el) el.remove();
+}
+
+/* Random decent color */
+function defaultColor(){
+  const h = Math.floor(Math.random()*360);
+  return `#${hslToHex(h, 65, 45)}`;
+}
+function hslToHex(h, s, l){
+  s/=100; l/=100;
+  const k=n=>(n + h/30) % 12;
+  const a=s*Math.min(l,1-l);
+  const f=n=> l - a*Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n),1)));
+  const r=Math.round(255*f(0));
+  const g=Math.round(255*f(8));
+  const b=Math.round(255*f(4));
+  return [r,g,b].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+
+function makeRoundSelectHTML(id, selectedStep){
+  let html = `<select id="${id}">`;
+  for(const opt of ROUND_OPTIONS){
+    const sel = (String(opt.step) === String(selectedStep)) ? "selected" : "";
+    html += `<option value="${opt.step}" ${sel}>${opt.label}</option>`;
+  }
+  html += `</select>`;
+  return html;
+}
+
+function rebuildChannels(addr){
+  const start = parseInt(document.getElementById(`start_${addr}`).value,10) || 0;
+  const count = Math.max(1, parseInt(document.getElementById(`count_${addr}`).value,10) || 1);
+  const funcSel = document.getElementById(`func_${addr}`);
+  const func = funcSel ? funcSel.value : (devices[addr]?.func || "03");
+
+  devices[addr].start = start;
+  devices[addr].count = count;
+  devices[addr].func = func;
+
+  const area=document.getElementById(`channels_${addr}`);
+  area.innerHTML="";
+
+  for(let i=0;i<count;i++){
+    const row=document.createElement("div");
+    row.className="chRow";
+
+    const roundId = `rd_${addr}_${i}`;
+    const filterId = `flt_${addr}_${i}`;
+
+    row.innerHTML=`
+      <div class="row">
+        <span class="smallLabel"><b>Reg+${i}</b></span>
+        <span class="smallLabel">(for 32-bit, uses Reg+${i} and Reg+${i+1})</span>
+      </div>
+
+      <div class="row">
+        <span class="smallLabel">Label</span>
+        <input id="lbl_${addr}_${i}" value="Ch${i}" size="12">
+
+        <span class="smallLabel">Type</span>
+        <select id="tp_${addr}_${i}">
+          <option value="u16">u16</option>
+          <option value="s16">s16</option>
+          <option value="u32be">u32 BE</option>
+          <option value="s32be">s32 BE</option>
+          <option value="u32le">u32 LE</option>
+          <option value="s32le">s32 LE</option>
+        </select>
+
+        <span class="smallLabel">Scale</span>
+        <input id="sc_${addr}_${i}" value="1" size="6">
+
+        <span class="smallLabel">Round</span>
+        ${makeRoundSelectHTML(roundId, 0.01)}
+
+        <span class="smallLabel">Filter</span>
+        <select id="${filterId}">
+          <option value="none">None</option>
+          <option value="ma">Mov Avg</option>
+          <option value="wma">Weighted</option>
+          <option value="ema">Exp</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <span class="smallLabel">Win</span>
+        <input id="win_${addr}_${i}" value="10" size="4">
+        <span class="smallLabel">Wt</span>
+        <input id="wt_${addr}_${i}" value="3" size="4">
+        <span class="smallLabel">α</span>
+        <input id="al_${addr}_${i}" value="0.3" size="4">
+
+        <span class="smallLabel">Color</span>
+        <input type="color" id="col_${addr}_${i}" value="${defaultColor()}">
+
+        <span class="smallLabel">Axis</span>
+        <select id="pos_${addr}_${i}">
+          <option value="auto">Auto</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+        </select>
+
+        <label class="smallLabel">
+          <input type="checkbox" id="ax_${addr}_${i}" checked>
+          Show axis
+        </label>
+      </div>
+    `;
+
+    area.appendChild(row);
+  }
+}
+
+/* =========================
+   Chart with per-channel axes
+========================= */
+const chart = new Chart(document.getElementById("chart"),{
+  type:"line",
+  data:{ datasets:[] },
+  options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    animation:false,
+    parsing:false,
+    interaction:{ mode:"nearest", intersect:false },
+    plugins:{
+      tooltip:{ enabled:true },
+      legend:{ display:true }
+    },
+    scales:{
+      x:{
+        type:"linear",
+        title:{ display:true, text:"Sample #" },
+        ticks:{ precision:0 }
+      }
+    }
+  }
+});
+
+function ensureAxis(axisId, axisTitle, color, posMode, showAxis){
+  if(!chart.options.scales) chart.options.scales = {};
+  if(!chart.options.scales[axisId]){
+    let pos;
+    if(posMode === "left" || posMode === "right") pos = posMode;
+    else pos = (axisCount++ % 2 === 0) ? "left" : "right";
+
+    chart.options.scales[axisId] = {
+      type:"linear",
+      position: pos,
+      display: !!showAxis,
+      grid: { drawOnChartArea:false },
+      title: { display:true, text: axisTitle, color: color },
+      ticks: { color: color }
+    };
+  } else {
+    let pos = chart.options.scales[axisId].position;
+    if(posMode === "left" || posMode === "right") pos = posMode;
+    chart.options.scales[axisId].position = pos;
+    chart.options.scales[axisId].display = !!showAxis;
+    chart.options.scales[axisId].title = { display:true, text: axisTitle, color: color };
+    chart.options.scales[axisId].ticks = { color: color };
+  }
+}
+
+function getOrCreateDataset(key, label, axisId, color){
+  let ds = chart.data.datasets.find(d => d._key === key);
+  if(!ds){
+    ds = {
+      _key: key,
+      label,
+      data: [],
+      borderColor: color,
+      backgroundColor: color,
+      tension: 0.2,
+      pointRadius: 2,
+      yAxisID: axisId,
+      _filterState: { hist:[], prev: undefined }
+    };
+    chart.data.datasets.push(ds);
+  } else {
+    ds.label = label;
+    ds.yAxisID = axisId;
+    ds.borderColor = color;
+    ds.backgroundColor = color;
+  }
+  return ds;
+}
+
+function applyAxisPadding(){
+  const padPct = Math.max(0, parseFloat(document.getElementById("yPadPct").value) || 0) / 100;
+
+  const mm = {}; // axisId -> {min,max}
+  for(const ds of chart.data.datasets){
+    const ax = ds.yAxisID;
+    if(!ax) continue;
+    for(const p of ds.data){
+      const y = p.y;
+      if(!Number.isFinite(y)) continue;
+      if(!mm[ax]) mm[ax] = { min:y, max:y };
+      else {
+        if(y < mm[ax].min) mm[ax].min = y;
+        if(y > mm[ax].max) mm[ax].max = y;
+      }
+    }
+  }
+
+  for(const [axId, range] of Object.entries(mm)){
+    const axis = chart.options.scales[axId];
+    if(!axis) continue;
+
+    let min = range.min;
+    let max = range.max;
+
+    if(min === max){
+      const bump = (min === 0) ? 1 : Math.abs(min) * 0.05;
+      min -= bump;
+      max += bump;
+    }
+
+    const span = max - min;
+    const pad = span * padPct;
+
+    axis.min = min - pad;
+    axis.max = max + pad;
+  }
+}
+
+/* =========================
+   Auto Detect
+========================= */
+document.getElementById("scanBtn").onclick = async ()=> {
+  const s = Math.max(1, parseInt(detectStart.value,10) || 1);
+  const e = Math.min(247, parseInt(detectEnd.value,10) || s);
+  const func = parseInt(document.getElementById("detectFunc").value, 16);
+
+  detectResults.textContent = "Scanning…";
+  const found=[];
+
+  for(let a=s; a<=e; a++){
+    const v = await readRegs(a, func, 0, 1);
+    if(v){
+      found.push(a);
+      createDeviceCard(a);
+      // default device func to the scan func
+      const fsel = document.getElementById(`func_${a}`);
+      if(fsel) fsel.value = (func === 0x04 ? "04" : "03");
+      if(devices[a]) devices[a].func = (func === 0x04 ? "04" : "03");
+    }
+  }
+  detectResults.textContent = found.length ? ("Found: " + found.join(", ")) : "No devices found.";
+};
+
+/* =========================
+   Polling
+========================= */
+let polling=false;
+
+function clearAndReset(){
+  // clear all plotted data, keep configs
+  for(const ds of chart.data.datasets){
+    ds.data = [];
+    if(ds._filterState){
+      ds._filterState.hist = [];
+      ds._filterState.prev = undefined;
+    }
+  }
+  sampleCounter = 0;
+  // clear axis min/max so they recompute
+  for(const k of Object.keys(chart.options.scales || {})){
+    if(k !== "x"){
+      delete chart.options.scales[k].min;
+      delete chart.options.scales[k].max;
+    }
+  }
+  chart.options.scales.x.min = 0;
+  chart.options.scales.x.max = 10;
+  chart.update("none");
+  log("Graph cleared/reset.");
+}
+
+async function pollOnce(){
+  sampleCounter++;
+
+  for(const addrStr of Object.keys(devices)){
+    const addr = parseInt(addrStr,10);
+
+    const fsel = document.getElementById(`func_${addr}`);
+    const func = parseInt((fsel ? fsel.value : devices[addr].func), 16) || 0x03;
+
+    const start = parseInt(document.getElementById(`start_${addr}`).value,10) || 0;
+    const count = Math.max(1, parseInt(document.getElementById(`count_${addr}`).value,10) || 1);
+
+    const vals = await readRegs(addr, func, start, count);
+    if(!vals) continue;
+
+    for(let i=0;i<count;i++){
+      const label = document.getElementById(`lbl_${addr}_${i}`).value || `Ch${i}`;
+      const scale = parseFloat(document.getElementById(`sc_${addr}_${i}`).value) || 1;
+      const color = document.getElementById(`col_${addr}_${i}`).value || "#3366cc";
+      const showAxis = document.getElementById(`ax_${addr}_${i}`).checked;
+      const posMode = document.getElementById(`pos_${addr}_${i}`).value || "auto";
+
+      const type = document.getElementById(`tp_${addr}_${i}`).value || "u16";
+      const roundStep = parseFloat(document.getElementById(`rd_${addr}_${i}`).value) || 0;
+      const filterMode = document.getElementById(`flt_${addr}_${i}`).value || "none";
+      const win = document.getElementById(`win_${addr}_${i}`).value;
+      const wt = document.getElementById(`wt_${addr}_${i}`).value;
+      const al = document.getElementById(`al_${addr}_${i}`).value;
+
+      let v;
+
+      if(type === "u16"){
+        v = vals[i];
+        if(v === undefined) continue;
+        v = v * scale;
+      }
+      else if(type === "s16"){
+        v = vals[i];
+        if(v === undefined) continue;
+        v = s16(v) * scale;
+      }
+      else if(type === "u32be" || type === "s32be"){
+        // needs i and i+1
+        const r0 = vals[i];
+        const r1 = vals[i+1];
+        if(r0 === undefined || r1 === undefined) continue;
+        const u = u32FromRegsBE(r0, r1);
+        v = (type === "s32be" ? s32(u) : u) * scale;
+      }
+      else if(type === "u32le" || type === "s32le"){
+        const r0 = vals[i];
+        const r1 = vals[i+1];
+        if(r0 === undefined || r1 === undefined) continue;
+        const u = u32FromRegsLE(r0, r1);
+        v = (type === "s32le" ? s32(u) : u) * scale;
+      } else {
+        continue;
+      }
+
+      const dsKey = `a${addr}_r${i}`;     // stable
+      const axisId = `y_${addr}_${i}`;    // one axis per channel
+      const axisTitle = `${addr}:${label}`;
+
+      ensureAxis(axisId, axisTitle, color, posMode, showAxis);
+
+      const dsLabel = `${addr}_${i}_${label}`;
+      const ds = getOrCreateDataset(dsKey, dsLabel, axisId, color);
+
+      // apply filter + rounding
+      v = applyFilter(ds._filterState, v, filterMode, win, wt, al);
+      v = roundToStep(v, roundStep);
+
+      ds.data.push({x:sampleCounter, y:v});
+      if(ds.data.length > 300) ds.data.shift();
+    }
+  }
+
+  // sliding x window
+  const minX = Math.max(0, sampleCounter - 300);
+  chart.options.scales.x.min = minX;
+  chart.options.scales.x.max = Math.max(10, sampleCounter);
+
+  applyAxisPadding();
+  chart.update("none");
+}
+
+async function pollLoop(){
+  if(!polling) return;
+  await pollOnce();
+  const ms = Math.max(200, parseInt(document.getElementById("pollMs").value,10) || 1000);
+  setTimeout(pollLoop, ms);
+}
+
+document.getElementById("startPoll").onclick = ()=>{ polling=true; pollLoop(); };
+document.getElementById("stopPoll").onclick = ()=>{ polling=false; };
+document.getElementById("clearGraphBtn").onclick = ()=>{ clearAndReset(); };
+
+/* =========================
+   Manual read + Write address + Connect
+========================= */
+document.getElementById("manualRead").onclick = async ()=> {
+  const a = parseInt(manualAddr.value,10);
+  const func = parseInt(document.getElementById("manualFunc").value, 16);
+  const s = parseInt(manualStart.value,10);
+  const c = parseInt(manualCount.value,10);
+  const r = await readRegs(a, func, s, c);
+  log("Manual: " + JSON.stringify(r));
+};
+
+document.getElementById("writeBtn").onclick = async ()=> {
+  const oldA = parseInt(oldAddr.value,10);
+  const newA = parseInt(newAddr.value,10);
+  const ok = await writeAddr(oldA,newA);
+  log(ok ? `Address write OK: ${oldA} -> ${newA}` : `Address write FAILED: ${oldA} -> ${newA}`);
+};
+
+// single, canonical connect handler
+document.getElementById("connectBtn").onclick = async ()=> {
+  try{
+    if(!("serial" in navigator)){
+      alert("Web Serial not supported in this browser.");
+      return;
+    }
+    port = await navigator.serial.requestPort();
+    await port.open({
+      baudRate: parseInt(document.getElementById("baud").value,10),
+      dataBits:8, stopBits:1, parity:"none"
+    });
+    writer = port.writable.getWriter();
+    reader = port.readable.getReader();
+    startReadLoop();
+    document.getElementById("connState").textContent = "Connected";
+    log("Connected");
+  } catch(e){
+    alert("Connect failed: " + e.message);
+  }
+};
+
+/* =========================
+   Profiles (save/load)
+========================= */
+const PROFILE_PREFIX = "rs485_modbus_profile__";
+
+function listProfiles(){
+  const sel = document.getElementById("profileSelect");
+  sel.innerHTML = "";
+  const names = [];
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith(PROFILE_PREFIX)){
+      names.push(k.substring(PROFILE_PREFIX.length));
+    }
+  }
+  names.sort((a,b)=>a.localeCompare(b));
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = "(select profile)";
+  sel.appendChild(opt0);
+  for(const n of names){
+    const o = document.createElement("option");
+    o.value = n;
+    o.textContent = n;
+    sel.appendChild(o);
+  }
+}
+
+function captureState(){
+  // capture devices and per-channel settings from DOM
+  const deviceStates = [];
+  for(const addrStr of Object.keys(devices)){
+    const addr = parseInt(addrStr,10);
+    const func = (document.getElementById(`func_${addr}`)?.value) || devices[addr].func || "03";
+    const start = parseInt(document.getElementById(`start_${addr}`)?.value,10) || 0;
+    const count = parseInt(document.getElementById(`count_${addr}`)?.value,10) || 1;
+
+    const channels = [];
+    for(let i=0;i<count;i++){
+      channels.push({
+        label: document.getElementById(`lbl_${addr}_${i}`)?.value || `Ch${i}`,
+        type: document.getElementById(`tp_${addr}_${i}`)?.value || "u16",
+        scale: document.getElementById(`sc_${addr}_${i}`)?.value || "1",
+        round: document.getElementById(`rd_${addr}_${i}`)?.value || "0.01",
+        filter: document.getElementById(`flt_${addr}_${i}`)?.value || "none",
+        win: document.getElementById(`win_${addr}_${i}`)?.value || "10",
+        wt: document.getElementById(`wt_${addr}_${i}`)?.value || "3",
+        al: document.getElementById(`al_${addr}_${i}`)?.value || "0.3",
+        color: document.getElementById(`col_${addr}_${i}`)?.value || "#3366cc",
+        axisPos: document.getElementById(`pos_${addr}_${i}`)?.value || "auto",
+        showAxis: document.getElementById(`ax_${addr}_${i}`)?.checked ?? true
+      });
+    }
+
+    deviceStates.push({ addr, func, start, count, channels });
+  }
+
+  return {
+    version: 1,
+    baud: document.getElementById("baud").value,
+    pollMs: document.getElementById("pollMs").value,
+    yPadPct: document.getElementById("yPadPct").value,
+    detectFunc: document.getElementById("detectFunc").value,
+    manualFunc: document.getElementById("manualFunc").value,
+    devices: deviceStates
+  };
+}
+
+function applyState(state){
+  // clear UI devices + chart
+  document.getElementById("deviceCards").innerHTML = "";
+  devices = {};
+  axisCount = 0;
+  clearAndReset();
+  chart.data.datasets = [];
+  chart.options.scales = { x: chart.options.scales.x };
+  chart.update("none");
+
+  // apply basics
+  if(state.baud) document.getElementById("baud").value = state.baud;
+  if(state.pollMs) document.getElementById("pollMs").value = state.pollMs;
+  if(state.yPadPct) document.getElementById("yPadPct").value = state.yPadPct;
+  if(state.detectFunc) document.getElementById("detectFunc").value = state.detectFunc;
+  if(state.manualFunc) document.getElementById("manualFunc").value = state.manualFunc;
+
+  // recreate devices/cards and channel settings
+  for(const d of (state.devices || [])){
+    createDeviceCard(d.addr);
+    const fsel = document.getElementById(`func_${d.addr}`);
+    if(fsel) fsel.value = d.func || "03";
+    document.getElementById(`start_${d.addr}`).value = d.start ?? 0;
+    document.getElementById(`count_${d.addr}`).value = d.count ?? 1;
+
+    // rebuild channel rows to match count
+    rebuildChannels(d.addr);
+
+    // then set channel values
+    const count = d.count ?? 1;
+    for(let i=0;i<count;i++){
+      const c = d.channels?.[i];
+      if(!c) continue;
+      const set = (id, val) => { const el=document.getElementById(id); if(el!==null && el!==undefined){ if(el.type==="checkbox") el.checked=!!val; else el.value=val; } };
+      set(`lbl_${d.addr}_${i}`, c.label);
+      set(`tp_${d.addr}_${i}`, c.type);
+      set(`sc_${d.addr}_${i}`, c.scale);
+      set(`rd_${d.addr}_${i}`, c.round);
+      set(`flt_${d.addr}_${i}`, c.filter);
+      set(`win_${d.addr}_${i}`, c.win);
+      set(`wt_${d.addr}_${i}`, c.wt);
+      set(`al_${d.addr}_${i}`, c.al);
+      set(`col_${d.addr}_${i}`, c.color);
+      set(`pos_${d.addr}_${i}`, c.axisPos);
+      set(`ax_${d.addr}_${i}`, c.showAxis);
+    }
+  }
+}
+
+document.getElementById("saveProfileBtn").onclick = ()=>{
+  const name = (document.getElementById("profileName").value || "").trim();
+  if(!name){ alert("Enter a profile name."); return; }
+  const state = captureState();
+  localStorage.setItem(PROFILE_PREFIX + name, JSON.stringify(state));
+  listProfiles();
+  log(`Saved profile "${name}"`);
+};
+
+document.getElementById("loadProfileBtn").onclick = ()=>{
+  const name = document.getElementById("profileSelect").value;
+  if(!name){ alert("Select a profile."); return; }
+  const raw = localStorage.getItem(PROFILE_PREFIX + name);
+  if(!raw){ alert("Profile not found."); return; }
+  const state = JSON.parse(raw);
+  applyState(state);
+  log(`Loaded profile "${name}"`);
+};
+
+document.getElementById("deleteProfileBtn").onclick = ()=>{
+  const name = document.getElementById("profileSelect").value;
+  if(!name){ alert("Select a profile."); return; }
+  if(!confirm(`Delete profile "${name}"?`)) return;
+  localStorage.removeItem(PROFILE_PREFIX + name);
+  listProfiles();
+  log(`Deleted profile "${name}"`);
+};
+
+listProfiles();
+
+/* =========================
+   Default: helpful hint
+========================= */
+log("Tip: Linovision weather station uses Input Registers (0x04) and INT32 values (2 regs per measurement).");
+</script>
+</body>
+</html>

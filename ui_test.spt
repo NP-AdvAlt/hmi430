@@ -1,0 +1,83 @@
+; ui_test.spt — touch test screen (continues in CODESEG from helpers.spt)
+
+uiTask:
+    YieldTask
+    YieldTask                               ; duplicate: 2-byte, Patch B doesn't fix 2-byte, must duplicate
+uiTask_draw:
+    GoSub drawGrid
+    YieldTask
+    YieldTask
+uiTask_idle:
+    Pause 500
+    GoTo uiTask_idle
+
+; ---------------------------------------------------------------------------
+; drawGrid: draws the 3x3 touch zone grid
+; ---------------------------------------------------------------------------
+
+drawGrid:
+    #HMI Reset(b:0)
+    ClrInstCount
+
+    ; Row 0 (top, py 0-90) -> CNC Y=-77 to -60
+    #HMI ButtonEvent2(id:1, x:0px, y:0px, w:160px, h:91px, t:"X107-138 Y-77/-60", ev:onZone00)
+    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:160px, h:91px, t:"X76-107 Y-77/-60", ev:onZone10)
+    #HMI ButtonEvent2(id:3, x:320px, y:0px, w:160px, h:91px, t:"X45-76 Y-77/-60", ev:onZone20)
+    ClrInstCount
+
+    ; Row 1 (middle, py 91-181) -> CNC Y=-60 to -43
+    #HMI ButtonEvent2(id:4, x:0px, y:91px, w:160px, h:91px, t:"X107-138 Y-60/-43", ev:onZone01)
+    #HMI ButtonEvent2(id:5, x:160px, y:91px, w:160px, h:91px, t:"X76-107 Y-60/-43", ev:onZone11)
+    #HMI ButtonEvent2(id:6, x:320px, y:91px, w:160px, h:91px, t:"X45-76 Y-60/-43", ev:onZone21)
+    ClrInstCount
+
+    ; Row 2 (bottom, py 182-271) -> CNC Y=-43 to -26  (CFG=col0, SET=col2)
+    #HMI ButtonEvent2(id:7, x:0px, y:182px, w:160px, h:90px, t:"CFG X107-138 Y-43/-26", ev:onZone02)
+    #HMI ButtonEvent2(id:8, x:160px, y:182px, w:160px, h:90px, t:"X76-107 Y-43/-26", ev:onZone12)
+    #HMI ButtonEvent2(id:9, x:320px, y:182px, w:160px, h:90px, t:"SET X45-76 Y-43/-26", ev:onZone22)
+    ClrInstCount
+
+    Return
+
+; ---------------------------------------------------------------------------
+; Button event handlers — update pressed button text to "P:col,row"
+; Uses ButtonEvent2 with same geometry + same ev: handler (idempotent)
+; Button-sized text is large enough for camera OCR — no Reset needed
+; NOTE: No serial output — all Port(N) calls corrupt the HMI display serial
+; ---------------------------------------------------------------------------
+
+onZone00:
+    #HMI ButtonEvent2(id:1, x:0px, y:0px, w:160px, h:91px, t:"P:0,0", ev:onZone00)
+    Return
+
+onZone10:
+    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:160px, h:91px, t:"P:1,0", ev:onZone10)
+    Return
+
+onZone20:
+    #HMI ButtonEvent2(id:3, x:320px, y:0px, w:160px, h:91px, t:"P:2,0", ev:onZone20)
+    Return
+
+onZone01:
+    #HMI ButtonEvent2(id:4, x:0px, y:91px, w:160px, h:91px, t:"P:0,1", ev:onZone01)
+    Return
+
+onZone11:
+    #HMI ButtonEvent2(id:5, x:160px, y:91px, w:160px, h:91px, t:"P:1,1", ev:onZone11)
+    Return
+
+onZone21:
+    #HMI ButtonEvent2(id:6, x:320px, y:91px, w:160px, h:91px, t:"P:2,1", ev:onZone21)
+    Return
+
+onZone02:
+    #HMI ButtonEvent2(id:7, x:0px, y:182px, w:160px, h:90px, t:"P:0,2", ev:onZone02)
+    Return
+
+onZone12:
+    #HMI ButtonEvent2(id:8, x:160px, y:182px, w:160px, h:90px, t:"P:1,2", ev:onZone12)
+    Return
+
+onZone22:
+    #HMI ButtonEvent2(id:9, x:320px, y:182px, w:160px, h:90px, t:"P:2,2", ev:onZone22)
+    Return

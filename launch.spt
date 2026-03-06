@@ -1,0 +1,10 @@
+POWERONSEG
+    ; Nothing needed at power-on for touch test
+
+INITSEG
+    ; Port(0) is the HMI display serial link — do NOT reconfigure it here.
+    ; Serial output to PC will use a separate mechanism.
+    LaunchTask uiTask
+
+LAUNCHSEG
+    RunTaskSForever

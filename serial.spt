@@ -1,0 +1,53 @@
+; serial.spt — touch zone serial reporters (continues in CODESEG from helpers.spt)
+; Sends "T:col,row\r\n" to serial port 1 (Port 0 is HMI display, do not use)
+; iiPrintText is 3+ bytes -> Patch B corrects jump targets automatically, no manual duplication needed.
+
+serialTouchCR:
+    IIPrintText 1,'0D
+    IIPrintText 1,'0A
+    Return
+
+sendTouch00:
+    iiPrintText 1,"T:0,0"
+    GoSub serialTouchCR
+    Return
+
+sendTouch10:
+    iiPrintText 1,"T:1,0"
+    GoSub serialTouchCR
+    Return
+
+sendTouch20:
+    iiPrintText 1,"T:2,0"
+    GoSub serialTouchCR
+    Return
+
+sendTouch01:
+    iiPrintText 1,"T:0,1"
+    GoSub serialTouchCR
+    Return
+
+sendTouch11:
+    iiPrintText 1,"T:1,1"
+    GoSub serialTouchCR
+    Return
+
+sendTouch21:
+    iiPrintText 1,"T:2,1"
+    GoSub serialTouchCR
+    Return
+
+sendTouch02:
+    iiPrintText 1,"T:0,2"
+    GoSub serialTouchCR
+    Return
+
+sendTouch12:
+    iiPrintText 1,"T:1,2"
+    GoSub serialTouchCR
+    Return
+
+sendTouch22:
+    iiPrintText 1,"T:2,2"
+    GoSub serialTouchCR
+    Return

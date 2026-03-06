@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modbus RS485 Tool</title>
+<!-- v4.0: layout redesign -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    background: #f0f2f5;
+    color: #1a1a2e;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 340px;
+    min-width: 240px;
+    background: #fff;
+    border-right: 1px solid #d1d5db;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  #sidebar-header {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  /* Sections wrapper — scrollable if sections overflow */
+  #sidebar-sections {
+    flex: 0 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .section {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 8px 12px;
+  }
+
+  .section-title {
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #6b7280;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .section-title span { font-size: 13px; }
+
+  .btn-toggle {
+    margin-left: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    color: #6b7280;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .btn-toggle:hover { color: #374151; }
+
+  /* ── COMMS LOG (sidebar bottom, flex:1) ── */
+  #log-panel {
+    flex: 1 0 100px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-top: 1px solid #e5e7eb;
+    min-height: 100px;
+  }
+
+  #log-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 12px 4px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  #comms-log {
+    flex: 1;
+    min-height: 0;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    background: #0f172a;
+    color: #94a3b8;
+    padding: 6px 8px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* ── FORM ELEMENTS ── */
+  label { display: block; font-size: 11px; color: #374151; margin-bottom: 2px; }
+
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    padding: 5px 7px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #fff;
+    color: #111827;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+    border-color: #3b82f6;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+
+  .form-row.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.cols4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .form-group { margin-bottom: 5px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+  .btn-danger { background: #dc2626; color: #fff; }
+  .btn-danger:hover:not(:disabled) { background: #b91c1c; }
+  .btn-success { background: #059669; color: #fff; }
+  .btn-success:hover:not(:disabled) { background: #047857; }
+  .btn-warning { background: #d97706; color: #fff; }
+  .btn-warning:hover:not(:disabled) { background: #b45309; }
+  .btn-secondary { background: #6b7280; color: #fff; }
+  .btn-secondary:hover:not(:disabled) { background: #4b5563; }
+  .btn-sm { padding: 3px 7px; font-size: 11px; }
+  .btn-xs { padding: 2px 5px; font-size: 10px; }
+  .btn-full { width: 100%; }
+
+  .btn-row { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+
+  /* ── STATUS BADGE ── */
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .badge-connected { background: #d1fae5; color: #065f46; }
+  .badge-disconnected { background: #fee2e2; color: #991b1b; }
+  .badge-addr { background: #dbeafe; color: #1e3a8a; }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { margin-top: 5px; display: none; }
+  .progress-bar-bg {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: #2563eb;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.2s;
+  }
+  .progress-label { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+  /* ── DEVICE LIST ── */
+  #device-list { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
+
+  .device-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 7px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+  }
+
+  .device-item .badge { flex-shrink: 0; }
+  .device-item .device-info { flex: 1; font-size: 11px; color: #374151; }
+
+  /* ── SUB-HEADING ── */
+  .sub-heading {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 5px;
+  }
+
+  /* ── GUARD MESSAGE ── */
+  .guard-msg {
+    font-size: 11px;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-top: 4px;
+    display: none;
+  }
+
+  /* ── SECTION DIVIDER LABEL ── */
+  .hr-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 6px 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .hr-label::before, .hr-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+  }
+
+  /* ── REGISTER TABLE ── */
+  #reg-table-wrap {
+    flex: 1;
+    overflow: auto;
+  }
+
+  #reg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  #reg-table th {
+    background: #f3f4f6;
+    padding: 4px 5px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #d1d5db;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  #reg-table td {
+    padding: 3px 4px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+  }
+
+  #reg-table tr:hover td { background: #f9fafb; }
+
+  #reg-table input[type="text"],
+  #reg-table input[type="number"],
+  #reg-table select {
+    padding: 2px 4px;
+    font-size: 11px;
+    min-width: 0;
+  }
+
+  #reg-table input[type="color"] {
+    width: 28px;
+    height: 22px;
+    padding: 1px;
+    border-radius: 3px;
+    border: 1px solid #d1d5db;
+    cursor: pointer;
+  }
+
+  .live-val-cell {
+    font-size: 11px;
+    color: #059669;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+    min-width: 60px;
+  }
+
+  /* ── FILTER ROW ── */
+  .filter-row td {
+    background: #f0f9ff;
+    border-bottom: 2px solid #bae6fd;
+    padding: 5px 8px;
+  }
+
+  .filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .filter-controls label {
+    display: inline;
+    font-size: 11px;
+    color: #374151;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .filter-param {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .filter-controls input[type="number"],
+  .filter-controls select {
+    padding: 2px 4px;
+    font-size: 11px;
+    width: auto;
+  }
+
+  /* ── MAIN CONTENT ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  /* ── CHART PANEL ── */
+  #chart-panel {
+    flex: 0 0 50%;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 14px 6px;
+    overflow: hidden;
+    min-height: 100px;
+  }
+
+  #graph-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    margin-bottom: 5px;
+  }
+
+  #graph-controls label { font-size: 12px; color: #374151; white-space: nowrap; }
+
+  .ctrl-divider {
+    color: #d1d5db;
+    font-size: 18px;
+    line-height: 1;
+    margin: 0 2px;
+  }
+
+  #chart-wrap {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+  }
+
+  #chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+  /* ── DRAG SPLITTER ── */
+  #splitter {
+    height: 8px;
+    background: #e5e7eb;
+    cursor: ns-resize;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    color: #9ca3af;
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+  #splitter:hover { background: #d1d5db; }
+
+  /* ── REGISTER PANEL ── */
+  #reg-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 60px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  #reg-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+    background: #fafafa;
+  }
+
+  #reg-toolbar .toolbar-title {
+    font-weight: 600;
+    font-size: 12px;
+    color: #374151;
+    margin-right: 2px;
+  }
+
+  /* ── MANUAL QUERY INLINE RESULTS ── */
+  #read-result {
+    margin-top: 4px;
+    padding: 4px 7px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #15803d;
+    display: none;
+    word-break: break-all;
+  }
+
+  #write-result {
+    margin-top: 4px;
+    padding: 4px 7px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #1d4ed8;
+    display: none;
+  }
+
+  .error-box {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #dc2626 !important;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+  /* ── LOG COLORS ── */
+  .log-tx { color: #60a5fa; }
+  .log-rx { color: #34d399; }
+  .log-err { color: #f87171; }
+  .log-info { color: #a78bfa; }
+
+  /* ── MISC ── */
+  .mt4 { margin-top: 4px; }
+  .no-devices { font-size: 11px; color: #9ca3af; font-style: italic; padding: 4px 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ SIDEBAR ═══════════════════════════════ -->
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <span>⚡ Modbus RS485 Tool</span>
+    <span id="conn-status"><span class="badge badge-disconnected">● Disconnected</span></span>
+  </div>
+
+  <div id="sidebar-sections">
+    <!-- ① PORT SETUP -->
+    <div class="section">
+      <div class="section-title">
+        <span>①</span> Port Setup
+        <button class="btn-toggle" id="section-toggle-port" onclick="AppUI.toggleSection('port')">▲</button>
+      </div>
+      <div id="section-body-port">
+        <div class="form-row cols4">
+          <div class="form-group">
+            <label>Baud</label>
+            <select id="baud">
+              <option>300</option><option>600</option><option>1200</option>
+              <option>2400</option><option>4800</option><option>9600</option>
+              <option selected>19200</option><option>38400</option>
+              <option>57600</option><option>115200</option>
+              <option>230400</option><option>460800</option><option>921600</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Bits</label>
+            <select id="dataBits">
+              <option value="8" selected>8</option>
+              <option value="7">7</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Parity</label>
+            <select id="parity">
+              <option value="none" selected>None</option>
+              <option value="even">Even</option>
+              <option value="odd">Odd</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Stop</label>
+            <select id="stopBits">
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Timeout (ms)</label>
+          <input type="number" id="timeout" value="500" min="50" max="5000" step="50">
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-connect" onclick="AppUI.toggleConnect()">Connect</button>
+      </div>
+    </div>
+
+    <!-- ② AUTO SCAN -->
+    <div class="section">
+      <div class="section-title">
+        <span>②</span> Auto Scan
+        <button class="btn-toggle" id="section-toggle-scan" onclick="AppUI.toggleSection('scan')">▲</button>
+      </div>
+      <div id="section-body-scan">
+        <div class="form-row cols3">
+          <div class="form-group">
+            <label>Start</label>
+            <input type="number" id="scan-start" value="1" min="1" max="247">
+          </div>
+          <div class="form-group">
+            <label>End</label>
+            <input type="number" id="scan-end" value="32" min="1" max="247">
+          </div>
+          <div class="form-group">
+            <label>FC</label>
+            <select id="scan-fc">
+              <option value="3">FC03–Hold</option>
+              <option value="4">FC04–Input</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-scan" onclick="AppUI.startScan()">Scan Bus</button>
+        <div class="progress-wrap" id="scan-progress">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="scan-bar"></div></div>
+          <div class="progress-label" id="scan-label">Scanning…</div>
+        </div>
+        <div id="guard-msg-scan" class="guard-msg"></div>
+        <div id="device-list"><div class="no-devices">No devices found yet.</div></div>
+      </div>
+    </div>
+
+    <!-- ③ MANUAL QUERY -->
+    <div class="section">
+      <div class="section-title">
+        <span>③</span> Manual Query
+        <button class="btn-toggle" id="section-toggle-query" onclick="AppUI.toggleSection('query')">▲</button>
+      </div>
+      <div id="section-body-query">
+        <div class="form-group">
+          <label>Device Address</label>
+          <input type="number" id="m-addr" value="1" min="1" max="247">
+        </div>
+
+        <div class="hr-label">Read</div>
+        <div class="form-row cols3">
+          <div class="form-group">
+            <label>FC</label>
+            <select id="m-read-fc">
+              <option value="3">03 – Holding Reg</option>
+              <option value="4">04 – Input Reg</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Reg</label>
+            <input type="text" id="m-read-reg" value="0x0000" placeholder="0x0000"
+                   onkeydown="if(event.key==='Enter') AppUI.manualRead()">
+          </div>
+          <div class="form-group">
+            <label>Count</label>
+            <input type="number" id="m-read-count" value="1" min="1" max="125"
+                   onkeydown="if(event.key==='Enter') AppUI.manualRead()">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="AppUI.manualRead()">Read</button>
+        <div id="read-result"></div>
+
+        <div class="hr-label">Write (FC06)</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Register</label>
+            <input type="text" id="m-write-reg" value="0x0000" placeholder="0x0000">
+          </div>
+          <div class="form-group">
+            <label>Value</label>
+            <input type="text" id="m-write-val" value="0">
+          </div>
+        </div>
+        <button class="btn btn-warning btn-sm" onclick="AppUI.manualWrite()">Write FC06</button>
+        <div id="write-result"></div>
+        <div id="guard-msg-query" class="guard-msg"></div>
+      </div>
+    </div>
+  </div><!-- end #sidebar-sections -->
+
+  <!-- COMMS LOG (flex:1, takes all remaining sidebar space) -->
+  <div id="log-panel">
+    <div id="log-panel-header">
+      <span class="sub-heading" style="margin:0">Comms Log (Hex)</span>
+      <button class="btn btn-secondary btn-xs" onclick="AppUI.clearLog()">Clear</button>
+    </div>
+    <div id="comms-log"></div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════ MAIN ═══════════════════════════════ -->
+<div id="main">
+  <!-- CHART PANEL (top, resizable) -->
+  <div id="chart-panel">
+    <div id="graph-controls">
+      <label>Poll:</label>
+      <select id="poll-interval">
+        <option value="100">100 ms</option>
+        <option value="500">500 ms</option>
+        <option value="1000" selected>1 s</option>
+        <option value="2000">2 s</option>
+        <option value="5000">5 s</option>
+        <option value="10000">10 s</option>
+      </select>
+      <button class="btn btn-success" id="btn-poll" onclick="AppUI.togglePolling()">▶ Start Polling</button>
+      <span id="poll-status" style="font-size:11px;color:#6b7280;"></span>
+      <span class="ctrl-divider">┊</span>
+      <button class="btn btn-secondary btn-sm" onclick="AppUI.exportCSV()">⬇ CSV</button>
+      <button class="btn btn-secondary btn-sm" id="btn-clear-graph" onclick="AppUI.clearGraph()">↺ Clear</button>
+    </div>
+    <div id="guard-msg-poll" class="guard-msg"></div>
+    <div id="chart-wrap">
+      <canvas id="live-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- DRAG SPLITTER -->
+  <div id="splitter"><span>⠿ drag to resize ⠿</span></div>
+
+  <!-- REGISTER CONFIG PANEL (bottom, scrollable) -->
+  <div id="reg-panel">
+    <div id="reg-toolbar">
+      <span class="toolbar-title">Register Config</span>
+      <button class="btn btn-secondary btn-sm" onclick="AppUI.addRegisterRow()">+ Add Row</button>
+      <button class="btn btn-secondary btn-sm" onclick="AppUI.importCSV()">Import CSV</button>
+      <button class="btn btn-secondary btn-sm" onclick="AppUI.importJSON()">Import JSON</button>
+      <button class="btn btn-secondary btn-sm" onclick="AppUI.exportJSON()">Export JSON</button>
+    </div>
+    <div id="reg-table-wrap">
+      <table id="reg-table">
+        <thead>
+          <tr>
+            <th title="Enable on graph">G</th>
+            <th title="Device address (1–247)">Dev</th>
+            <th title="Register address (hex)">Reg</th>
+            <th>Name</th>
+            <th>Unit</th>
+            <th>Type</th>
+            <th title="Word order: AB = big-endian, BA = little-endian">WO</th>
+            <th title="Multiplier (applied before offset)">×</th>
+            <th title="Offset (added after multiply)">+</th>
+            <th title="Graph line color">Clr</th>
+            <th title="Last polled value">Live Val</th>
+            <th title="Y-axis minimum (blank = auto)">Y Min</th>
+            <th title="Y-axis maximum (blank = auto)">Y Max</th>
+            <th title="Reset Y-axis to auto-range">↺</th>
+            <th title="Filter / rounding settings">F</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="reg-tbody"></tbody>
+      </table>
+    </div>
+    <div id="reg-empty" class="no-devices" style="padding:8px 12px;display:none">No registers configured.</div>
+    <!-- Hidden file inputs -->
+    <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none" onchange="AppUI.onCSVFile(event)">
+    <input type="file" id="json-file-input" accept=".json,application/json" style="display:none" onchange="AppUI.onJSONFile(event)">
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+//  CRC16 — Modbus RTU (polynomial 0xA001)
+// ═══════════════════════════════════════════════════════════
+const CRC16 = {
+  compute(buf) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < buf.length; i++) {
+      crc ^= buf[i];
+      for (let j = 0; j < 8; j++) {
+        if (crc & 1) { crc = (crc >>> 1) ^ 0xA001; }
+        else { crc >>>= 1; }
+      }
+    }
+    return crc;
+  },
+  append(buf) {
+    const crc = this.compute(buf);
+    const out = new Uint8Array(buf.length + 2);
+    out.set(buf);
+    out[buf.length]     = crc & 0xFF;
+    out[buf.length + 1] = (crc >> 8) & 0xFF;
+    return out;
+  },
+  valid(buf) {
+    if (buf.length < 4) return false;
+    const payload = buf.slice(0, buf.length - 2);
+    const crc = this.compute(payload);
+    return buf[buf.length - 2] === (crc & 0xFF) && buf[buf.length - 1] === ((crc >> 8) & 0xFF);
+  }
+};
+
+function toHex(buf) {
+  return Array.from(buf).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+}
+function parseIntValue(s) {
+  s = s.trim();
+  if (/^0x/i.test(s)) return parseInt(s, 16);
+  return parseInt(s, 10);
+}
+function formatRegHex(n) {
+  return '0x' + (n >>> 0).toString(16).toUpperCase().padStart(4, '0');
+}
+function parseRegHex(s) {
+  const n = parseInt(String(s).trim().replace(/^0x/i, ''), 16);
+  return (Number.isFinite(n) && n >= 0 && n <= 65535) ? n : 0;
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function roundToStep(x, step) {
+  if (!Number.isFinite(x)) return x;
+  if (!step || step <= 0) return x;
+  return Math.round(x / step) * step;
+}
+
+function applyFilter(state, value, filterMode, windowN, weightK, alpha) {
+  if (!state.hist) state.hist = [];
+  state.hist.push(value);
+  if (state.hist.length > 500) state.hist.shift();
+  const n = Math.max(2, parseInt(windowN, 10) || 2);
+  if (filterMode === 'none') return value;
+  if (filterMode === 'ma') {
+    const slice = state.hist.slice(-n);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  }
+  if (filterMode === 'wma') {
+    const slice = state.hist.slice(-n);
+    const k = Math.max(1, parseFloat(weightK) || 1);
+    let wSum = 0, vSum = 0;
+    const L = slice.length;
+    for (let i = 0; i < L; i++) {
+      const w = 1 + (i / Math.max(1, L - 1)) * (k - 1);
+      wSum += w; vSum += slice[i] * w;
+    }
+    return vSum / (wSum || 1);
+  }
+  if (filterMode === 'ema') {
+    const a = Math.min(0.999, Math.max(0.001, parseFloat(alpha) || 0.3));
+    if (state.prev === undefined) state.prev = value;
+    state.prev = a * value + (1 - a) * state.prev;
+    return state.prev;
+  }
+  if (filterMode === 'dema') {
+    const a = Math.min(0.999, Math.max(0.001, parseFloat(alpha) || 0.3));
+    if (state.ema1 === undefined) { state.ema1 = value; state.ema2 = value; }
+    state.ema1 = a * value + (1 - a) * state.ema1;
+    state.ema2 = a * state.ema1 + (1 - a) * state.ema2;
+    return 2 * state.ema1 - state.ema2;
+  }
+  if (filterMode === 'median') {
+    const slice = state.hist.slice(-n);
+    const sorted = [...slice].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return value;
+}
+
+class SerialManager {
+  constructor() {
+    this.port = null; this.writer = null; this.isOpen = false;
+    this.rxBuffer = []; this._readLoopActive = false; this._readLoopReader = null;
+  }
+  async open(opts) {
+    if (this.isOpen) await this.close();
+    this.port = await navigator.serial.requestPort({});
+    await this.port.open({ baudRate: parseInt(opts.baudRate), dataBits: parseInt(opts.dataBits),
+      parity: opts.parity, stopBits: parseInt(opts.stopBits), flowControl: 'none' });
+    this.writer = this.port.writable.getWriter();
+    this.rxBuffer = []; this.isOpen = true; this._startReadLoop();
+  }
+  async close() {
+    this._readLoopActive = false;
+    try { if (this._readLoopReader) { await this._readLoopReader.cancel(); this._readLoopReader = null; } } catch (e) {}
+    try { if (this.writer) { await this.writer.close(); this.writer = null; } } catch (e) {}
+    try { if (this.port)   { await this.port.close();   this.port = null;   } } catch (e) {}
+    this.isOpen = false; this.rxBuffer = [];
+  }
+  async write(bytes) { if (!this.writer) throw new Error('Port not open'); await this.writer.write(bytes); }
+  clearRx() { this.rxBuffer.length = 0; }
+  _startReadLoop() { this._readLoopActive = true; this._runReadLoop().catch(() => {}); }
+  async _runReadLoop() {
+    try {
+      const reader = this.port.readable.getReader();
+      this._readLoopReader = reader;
+      while (this._readLoopActive) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value && value.length) {
+          for (const b of value) this.rxBuffer.push(b);
+          if (this.rxBuffer.length > 20000) this.rxBuffer.splice(0, this.rxBuffer.length - 20000);
+        }
+      }
+      reader.releaseLock();
+    } catch (e) {}
+    this._readLoopReader = null;
+  }
+  tryExtractFrame(addr, func) {
+    const buf = this.rxBuffer;
+    if (buf.length < 5) return null;
+    const idx = buf.indexOf(addr);
+    if (idx < 0) return null;
+    if (idx > 0) buf.splice(0, idx);
+    if (buf.length < 5) return null;
+    const f = buf[1];
+    if (f === (func | 0x80)) { if (buf.length < 5) return null; return buf.splice(0, 5); }
+    if (f !== func) { buf.splice(0, 1); return null; }
+    if (func === 0x03 || func === 0x04) {
+      if (buf.length < 3) return null;
+      const len = 3 + buf[2] + 2;
+      if (buf.length < len) return null;
+      return buf.splice(0, len);
+    }
+    if (func === 0x06) { if (buf.length < 8) return null; return buf.splice(0, 8); }
+    return null;
+  }
+}
+
+class ModbusRTU {
+  constructor(serialMgr) { this.serial = serialMgr; this.timeoutMs = 500; this.onLog = null; }
+  log(type, msg) { if (this.onLog) this.onLog(type, msg); }
+  buildFC03(addr, startReg, count) { return CRC16.append(new Uint8Array([addr, 0x03, startReg >> 8, startReg & 0xFF, count >> 8, count & 0xFF])); }
+  buildFC04(addr, startReg, count) { return CRC16.append(new Uint8Array([addr, 0x04, startReg >> 8, startReg & 0xFF, count >> 8, count & 0xFF])); }
+  buildFC06(addr, reg, value) { return CRC16.append(new Uint8Array([addr, 0x06, reg >> 8, reg & 0xFF, value >> 8, value & 0xFF])); }
+  async sendRequest(frame, addr, func) {
+    const ts = new Date().toISOString().slice(11, 23);
+    this.log('tx', `[${ts}] TX: ${toHex(frame)}`);
+    this.serial.clearRx(); await this.serial.write(frame); await sleep(15);
+    const end = Date.now() + this.timeoutMs;
+    while (Date.now() < end) {
+      const extracted = this.serial.tryExtractFrame(addr, func);
+      if (extracted !== null) {
+        const resp = new Uint8Array(extracted);
+        const ts2 = new Date().toISOString().slice(11, 23);
+        const crcOk = CRC16.valid(resp);
+        this.log(crcOk ? 'rx' : 'err', `[${ts2}] RX: ${toHex(resp)}${crcOk ? '' : '  ← CRC ERROR'}`);
+        if (!crcOk) throw new Error('CRC mismatch');
+        if (resp[1] & 0x80) {
+          const codes = { 1: 'Illegal Function', 2: 'Illegal Data Address', 3: 'Illegal Data Value', 4: 'Slave Device Failure' };
+          throw new Error(`Modbus exception 0x${resp[2].toString(16).toUpperCase()}: ${codes[resp[2]] || 'Unknown'}`);
+        }
+        return resp;
+      }
+      await sleep(5);
+    }
+    const ts2 = new Date().toISOString().slice(11, 23);
+    this.log('err', `[${ts2}] RX: <timeout — no response>`);
+    throw new Error('Timeout: no response');
+  }
+  async readRegisters(addr, fc, startReg, count) {
+    const funcByte = fc === 4 ? 0x04 : 0x03;
+    const frame = fc === 4 ? this.buildFC04(addr, startReg, count) : this.buildFC03(addr, startReg, count);
+    const resp = await this.sendRequest(frame, addr, funcByte);
+    const regs = [];
+    for (let i = 0; i < resp[2]; i += 2) regs.push((resp[3 + i] << 8) | resp[4 + i]);
+    return regs;
+  }
+  async writeRegister(addr, reg, value) { await this.sendRequest(this.buildFC06(addr, reg, value & 0xFFFF), addr, 0x06); }
+}
+
+class DeviceScanner {
+  constructor(modbus) { this.modbus = modbus; this.scanning = false; }
+  async scan(startAddr, endAddr, fc, progressCb) {
+    this.scanning = true;
+    const found = [], total = endAddr - startAddr + 1;
+    let done = 0;
+    const savedLog = this.modbus.onLog, savedTimeout = this.modbus.timeoutMs;
+    this.modbus.onLog = null; this.modbus.timeoutMs = 250;
+    for (let addr = startAddr; addr <= endAddr && this.scanning; addr++) {
+      done++; progressCb(done / total, addr, found);
+      try {
+        await this.modbus.readRegisters(addr, fc, 0, 1);
+        found.push(addr);
+        if (savedLog) savedLog('info', `[${new Date().toISOString().slice(11,23)}] SCAN found device at addr ${addr}`);
+      } catch (e) {}
+      await sleep(10);
+    }
+    this.modbus.onLog = savedLog; this.modbus.timeoutMs = savedTimeout; this.scanning = false;
+    return found;
+  }
+  stop() { this.scanning = false; }
+}
+
+class RegisterManager {
+  constructor() { this.registers = []; this._nextId = 1; this.load(); }
+  newReg(partial = {}) {
+    return {
+      id: this._nextId++, deviceAddr: 1, register: 0, name: 'Register', unit: '',
+      type: 'uint16', wordOrder: 'big', multiplier: 1, offset: 0,
+      color: this._defaultColor(), graphEnabled: true,
+      filterMode: 'none', filterWindow: 10, filterWeight: 3, filterAlpha: 0.3, roundStep: 0,
+      yMin: null, yMax: null, ...partial
+    };
+  }
+  _defaultColor() {
+    const colors = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+    return colors[this.registers.length % colors.length];
+  }
+  add(partial) { const reg = this.newReg(partial); this.registers.push(reg); this.save(); return reg; }
+  remove(id) { this.registers = this.registers.filter(r => r.id !== id); this.save(); }
+  update(id, changes) { const reg = this.registers.find(r => r.id === id); if (reg) { Object.assign(reg, changes); this.save(); } }
+  regsNeeded(type) { return (type === 'uint32' || type === 'int32' || type === 'float32') ? 2 : 1; }
+  decodeValue(rawRegs, type, wordOrder) {
+    if (rawRegs.length < this.regsNeeded(type)) return NaN;
+    if (type === 'uint16') return rawRegs[0];
+    if (type === 'int16') { const v = rawRegs[0]; return v >= 0x8000 ? v - 0x10000 : v; }
+    let hi, lo;
+    if (wordOrder === 'big') { hi = rawRegs[0]; lo = rawRegs[1]; } else { hi = rawRegs[1]; lo = rawRegs[0]; }
+    const combined = ((hi << 16) | lo) >>> 0;
+    if (type === 'uint32') return combined;
+    if (type === 'int32') return combined >= 0x80000000 ? combined - 0x100000000 : combined;
+    if (type === 'float32') { const buf = new ArrayBuffer(4); const view = new DataView(buf); view.setUint32(0, combined, false); return view.getFloat32(0, false); }
+    return NaN;
+  }
+  applyScale(raw, multiplier, offset) { return raw * multiplier + offset; }
+  save() {
+    try { localStorage.setItem('modbus_registers', JSON.stringify(this.registers)); } catch (e) {}
+    try { localStorage.setItem('modbus_reg_nextid', String(this._nextId)); } catch (e) {}
+  }
+  load() {
+    try {
+      const d = localStorage.getItem('modbus_registers');
+      if (d) {
+        this.registers = JSON.parse(d);
+        for (const r of this.registers) {
+          if (r.filterMode   === undefined) r.filterMode   = 'none';
+          if (r.filterWindow === undefined) r.filterWindow = 10;
+          if (r.filterWeight === undefined) r.filterWeight = 3;
+          if (r.filterAlpha  === undefined) r.filterAlpha  = 0.3;
+          if (r.roundStep    === undefined) r.roundStep    = 0;
+          if (r.yMin         === undefined) r.yMin         = null;
+          if (r.yMax         === undefined) r.yMax         = null;
+        }
+        this._nextId = this.registers.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1;
+      }
+      const ni = localStorage.getItem('modbus_reg_nextid');
+      if (ni) this._nextId = Math.max(this._nextId, parseInt(ni));
+    } catch (e) {}
+  }
+  importCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const header = lines[0].split(',').map(s => s.trim().toLowerCase());
+    const get = (row, name) => { const i = header.indexOf(name); return i >= 0 ? (row[i] || '').trim() : ''; };
+    const added = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(',');
+      if (row.length < 2) continue;
+      added.push(this.add({
+        deviceAddr: parseInt(get(row,'device_addr')||get(row,'dev')||'1')||1,
+        register: parseInt(get(row,'register')||get(row,'reg')||'0')||0,
+        name: get(row,'name')||`Reg${i}`, unit: get(row,'unit')||'',
+        type: get(row,'type')||'uint16', wordOrder: get(row,'word_order')||get(row,'wordorder')||'big',
+        multiplier: parseFloat(get(row,'multiplier')||'1')||1, offset: parseFloat(get(row,'offset')||'0')||0,
+        color: get(row,'color')||this._defaultColor(), graphEnabled: true
+      }));
+    }
+    return added.length;
+  }
+  importJSON(text) { const arr = JSON.parse(text); let count = 0; for (const item of arr) { this.add({...item, id: undefined}); count++; } return count; }
+  exportJSON() { const blob = new Blob([JSON.stringify(this.registers, null, 2)], {type:'application/json'}); downloadBlob(blob, 'modbus-registers.json'); }
+}
+
+class DataLogger {
+  constructor() { this.records = []; this.maxAge = 5*60*1000; this._timer = null; this.polling = false; this._filterStates = new Map(); }
+  startPolling(registers, intervalMs, modbus, regMgr, onData) {
+    if (this.polling) this.stopPolling();
+    this._filterStates = new Map(); this.polling = true;
+    const poll = async () => {
+      if (!this.polling) return;
+      const now = Date.now();
+      for (const reg of registers) {
+        if (!reg.graphEnabled) continue;
+        try {
+          const count = regMgr.regsNeeded(reg.type);
+          const rawRegs = await modbus.readRegisters(reg.deviceAddr, 3, reg.register, count);
+          const raw = regMgr.decodeValue(rawRegs, reg.type, reg.wordOrder);
+          let value = regMgr.applyScale(raw, reg.multiplier, reg.offset);
+          if (!this._filterStates.has(reg.id)) this._filterStates.set(reg.id, {hist:[],prev:undefined,ema1:undefined,ema2:undefined});
+          value = applyFilter(this._filterStates.get(reg.id), value, reg.filterMode||'none', reg.filterWindow, reg.filterWeight, reg.filterAlpha);
+          value = roundToStep(value, reg.roundStep||0);
+          this.addRecord(now, reg, value);
+          if (onData) onData(reg, now, value);
+        } catch (e) {
+          if (modbus.onLog) modbus.onLog('err', `[${new Date().toISOString().slice(11,23)}] Poll error [addr ${reg.deviceAddr} reg ${formatRegHex(reg.register)}]: ${e.message}`);
+        }
+      }
+      this._trim();
+    };
+    this._timer = setInterval(poll, intervalMs); poll();
+  }
+  stopPolling() { this.polling = false; if (this._timer) { clearInterval(this._timer); this._timer = null; } }
+  addRecord(timestamp, reg, value) { this.records.push({timestamp, registerId: reg.id, name: reg.name, unit: reg.unit, value}); }
+  _trim() { const cutoff = Date.now() - this.maxAge; this.records = this.records.filter(r => r.timestamp >= cutoff); }
+  exportCSV() {
+    if (this.records.length === 0) { alert('No data to export.'); return; }
+    const rows = ['timestamp,register_id,name,unit,value'];
+    for (const r of this.records) rows.push(`${new Date(r.timestamp).toISOString()},${r.registerId},"${r.name}","${r.unit}",${r.value}`);
+    downloadBlob(new Blob([rows.join('\n')], {type:'text/csv'}), `modbus-log-${Date.now()}.csv`);
+  }
+}
+
+class ChartManager {
+  constructor(canvasId) { this.canvas = document.getElementById(canvasId); this.chart = null; this.MAX_POINTS = 120; this.datasetMap = {}; this._init(); }
+  _avgPlugin() {
+    return { id: 'avgPointers', afterDraw: (chart) => {
+      const {ctx, chartArea} = chart; if (!chartArea) return;
+      chart.data.datasets.forEach(ds => {
+        if (!ds.data || ds.data.length === 0) return;
+        const ys = ds.data.map(p => p.y).filter(Number.isFinite); if (ys.length === 0) return;
+        const avg = ys.reduce((a,b)=>a+b,0)/ys.length;
+        const axis = chart.scales[ds.yAxisID]; if (!axis) return;
+        const yPx = axis.getPixelForValue(avg);
+        if (yPx < chartArea.top || yPx > chartArea.bottom) return;
+        const color = ds.borderColor; ctx.save();
+        ctx.beginPath(); ctx.setLineDash([4,4]); ctx.strokeStyle = color+'70'; ctx.lineWidth = 1;
+        ctx.moveTo(chartArea.left, yPx); ctx.lineTo(chartArea.right, yPx); ctx.stroke(); ctx.setLineDash([]);
+        const position = axis.position; ctx.fillStyle = color; ctx.beginPath();
+        if (position === 'left') { ctx.moveTo(chartArea.left,yPx); ctx.lineTo(chartArea.left-7,yPx-5); ctx.lineTo(chartArea.left-7,yPx+5); }
+        else { ctx.moveTo(chartArea.right,yPx); ctx.lineTo(chartArea.right+7,yPx-5); ctx.lineTo(chartArea.right+7,yPx+5); }
+        ctx.closePath(); ctx.fill();
+        ctx.font = '9px system-ui, sans-serif'; ctx.fillStyle = color; ctx.textBaseline = 'middle';
+        if (position === 'left') { ctx.textAlign = 'right'; ctx.fillText(avg.toPrecision(4), chartArea.left-9, yPx); }
+        else { ctx.textAlign = 'left'; ctx.fillText(avg.toPrecision(4), chartArea.right+9, yPx); }
+        ctx.restore();
+      });
+    }};
+  }
+  _init() {
+    const ctx = this.canvas.getContext('2d');
+    this.chart = new Chart(ctx, { type: 'line', data: {datasets:[]}, plugins: [this._avgPlugin()],
+      options: { animation: false, responsive: true, maintainAspectRatio: false,
+        interaction: {mode:'index', intersect:false},
+        plugins: { legend: {position:'top', labels:{font:{size:11}, boxWidth:16}},
+          tooltip: {callbacks:{label: ctx => { const ds=ctx.dataset; return ` ${ds.label}: ${ctx.parsed.y!==undefined?ctx.parsed.y.toFixed(4).replace(/\.?0+$/,''):'-'}${ds.unit||''}`;}}}},
+        scales: { x: { type:'time', time:{unit:'second', displayFormats:{second:'HH:mm:ss'}, tooltipFormat:'HH:mm:ss.SSS'},
+          ticks:{font:{size:10}, maxTicksLimit:8, color:'#6b7280'}, grid:{color:'#f3f4f6'} } }
+      }
+    });
+  }
+  updateDatasets(registers) {
+    const active = registers.filter(r => r.graphEnabled);
+    const newDatasets = [], newScales = {x: this.chart.options.scales.x};
+    this.datasetMap = {};
+    for (let i = 0; i < active.length; i++) {
+      const reg = active[i], axisId = 'y_'+reg.id, position = i%2===0?'left':'right', isFirst = i===0;
+      const existingAxis = this.chart.options.scales[axisId];
+      const scaleConfig = { type:'linear', position, display:true,
+        grid:{drawOnChartArea:isFirst, color:'#f3f4f6'}, border:{color:reg.color},
+        ticks:{color:reg.color, font:{size:10}, maxTicksLimit:6} };
+      if (existingAxis) { if (existingAxis.min!==undefined) scaleConfig.min=existingAxis.min; if (existingAxis.max!==undefined) scaleConfig.max=existingAxis.max; }
+      newScales[axisId] = scaleConfig;
+      const existingIdx = this.chart.data.datasets.findIndex(ds => ds.registerId===reg.id);
+      const ds = { registerId:reg.id, label:`${reg.name}${reg.unit?' ('+reg.unit+')':''}`, unit:reg.unit,
+        data: existingIdx>=0?this.chart.data.datasets[existingIdx].data:[],
+        borderColor:reg.color, backgroundColor:reg.color+'22', borderWidth:1.5,
+        pointRadius:0, tension:0.2, fill:false, yAxisID:axisId };
+      this.datasetMap[reg.id] = newDatasets.length; newDatasets.push(ds);
+    }
+    this.chart.options.scales = newScales; this.chart.data.datasets = newDatasets; this.chart.update('none');
+  }
+  addPoint(registerId, timestamp, value, reg) {
+    const idx = this.datasetMap[registerId]; if (idx===undefined) return;
+    const ds = this.chart.data.datasets[idx]; if (!ds) return;
+    ds.data.push({x:timestamp, y:value});
+    if (ds.data.length > this.MAX_POINTS) ds.data.shift();
+    const axis = this.chart.options.scales[ds.yAxisID];
+    if (axis) {
+      const ys = ds.data.map(p=>p.y).filter(Number.isFinite);
+      if (ys.length > 0) {
+        const dataMin=Math.min(...ys), dataMax=Math.max(...ys), span=dataMax-dataMin;
+        const pad = span===0?(Math.abs(dataMax)*0.1||1):span*0.1;
+        const manualMin = (reg&&reg.yMin!==null&&reg.yMin!==undefined)?reg.yMin:null;
+        const manualMax = (reg&&reg.yMax!==null&&reg.yMax!==undefined)?reg.yMax:null;
+        if (manualMin!==null||manualMax!==null) {
+          axis.min = Math.min(manualMin!==null?manualMin:dataMin-pad, dataMin-pad);
+          axis.max = Math.max(manualMax!==null?manualMax:dataMax+pad, dataMax+pad);
+        } else { axis.min=dataMin-pad; axis.max=dataMax+pad; }
+      }
+    }
+    this.chart.update('none');
+  }
+  clearAll() {
+    for (const ds of this.chart.data.datasets) ds.data = [];
+    for (const [key, scale] of Object.entries(this.chart.options.scales)) { if (key!=='x') { delete scale.min; delete scale.max; } }
+    this.chart.update('none');
+  }
+}
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+const AppUI = (() => {
+  const serial = new SerialManager(), modbus = new ModbusRTU(serial), scanner = new DeviceScanner(modbus);
+  const regMgr = new RegisterManager(), logger = new DataLogger();
+  let chart = null, connected = false, polling = false, scanRunning = false, foundDevices = [];
+  let _openFilterRows = new Set();
+  const _liveValues = new Map();
+  let _logPaused = false;
+  const LOG_MAX = 500;
+  let logLines = [];
+
+  function appendLog(type, msg) {
+    logLines.push({type, msg}); if (logLines.length > LOG_MAX) logLines.shift();
+    const el = document.getElementById('comms-log'); if (!el) return;
+    const div = document.createElement('div'); div.className = `log-${type}`; div.textContent = msg;
+    el.appendChild(div);
+    if (!_logPaused) el.scrollTop = el.scrollHeight;
+    while (el.children.length > LOG_MAX) el.removeChild(el.firstChild);
+  }
+  modbus.onLog = appendLog;
+
+  function showGuard(msg, elId) {
+    const el = document.getElementById(elId); if (!el) return;
+    el.textContent = msg; el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
+
+  async function toggleConnect() {
+    if (connected) {
+      await serial.close(); connected = false; updateConnStatus();
+      document.getElementById('btn-connect').textContent = 'Connect';
+      appendLog('info', `[${ts()}] Disconnected.`);
+    } else {
+      const opts = { baudRate: document.getElementById('baud').value, dataBits: document.getElementById('dataBits').value,
+        parity: document.getElementById('parity').value, stopBits: document.getElementById('stopBits').value };
+      modbus.timeoutMs = parseInt(document.getElementById('timeout').value) || 500;
+      try {
+        await serial.open(opts); connected = true; updateConnStatus();
+        document.getElementById('btn-connect').textContent = 'Disconnect';
+        savePortSettings();
+        appendLog('info', `[${ts()}] Connected @ ${opts.baudRate} baud, ${opts.dataBits}-${opts.parity}-${opts.stopBits}`);
+      } catch (e) { appendLog('err', `[${ts()}] Connect failed: ${e.message}`); }
+    }
+  }
+
+  function updateConnStatus() {
+    const el = document.getElementById('conn-status');
+    el.innerHTML = connected ? '<span class="badge badge-connected">● Connected</span>' : '<span class="badge badge-disconnected">● Disconnected</span>';
+  }
+
+  async function startScan() {
+    if (!connected) { showGuard('Not connected.', 'guard-msg-scan'); return; }
+    if (scanRunning) { scanner.stop(); return; }
+    const startAddr = parseInt(document.getElementById('scan-start').value)||1;
+    const endAddr = parseInt(document.getElementById('scan-end').value)||32;
+    const fc = parseInt(document.getElementById('scan-fc').value);
+    if (startAddr < 1 || endAddr > 247 || startAddr > endAddr) { showGuard('Invalid address range (1–247)', 'guard-msg-scan'); return; }
+    scanRunning = true; foundDevices = [];
+    document.getElementById('btn-scan').textContent = 'Stop Scan';
+    document.getElementById('scan-progress').style.display = 'block';
+    renderDeviceList([]);
+    appendLog('info', `[${ts()}] Starting scan ${startAddr}–${endAddr}…`);
+    try {
+      await scanner.scan(startAddr, endAddr, fc, (frac, currentAddr, found) => {
+        document.getElementById('scan-bar').style.width = (frac*100).toFixed(1)+'%';
+        document.getElementById('scan-label').textContent = `Scanning addr ${currentAddr}… (${found.length} found)`;
+        if (found.length !== foundDevices.length) { foundDevices = [...found]; renderDeviceList(foundDevices); }
+      });
+    } catch (e) { appendLog('err', `[${ts()}] Scan error: ${e.message}`); }
+    scanRunning = false;
+    document.getElementById('btn-scan').textContent = 'Scan Bus';
+    document.getElementById('scan-label').textContent = `Done. ${foundDevices.length} device(s) found.`;
+    appendLog('info', `[${ts()}] Scan complete. Found: [${foundDevices.join(', ')}]`);
+  }
+
+  function renderDeviceList(devices) {
+    const el = document.getElementById('device-list'); el.innerHTML = '';
+    if (devices.length === 0) { el.innerHTML = '<div class="no-devices">No devices found yet.</div>'; return; }
+    for (const addr of devices) {
+      const item = document.createElement('div'); item.className = 'device-item';
+      item.innerHTML = `<span class="badge badge-addr">Addr ${addr}</span><span class="device-info">Device found</span><button class="btn btn-xs btn-secondary" onclick="AppUI.reassignAddress(${addr})">Reassign</button>`;
+      el.appendChild(item);
+    }
+  }
+
+  async function reassignAddress(currentAddr) {
+    const regNum = prompt(`Reassign address for device ${currentAddr}.\nEnter the holding register number that stores the device address:`, '0');
+    if (regNum === null) return;
+    const newAddr = prompt(`Enter new address (1–247):`, String(currentAddr));
+    if (newAddr === null) return;
+    const reg = parseInt(regNum), na = parseInt(newAddr);
+    if (isNaN(reg)||isNaN(na)||na<1||na>247) { alert('Invalid input'); return; }
+    try {
+      await modbus.writeRegister(currentAddr, reg, na);
+      appendLog('info', `[${ts()}] Reassigned device ${currentAddr} → ${na} via register ${reg}`);
+      alert(`Done. Device address changed to ${na}. Re-scan to confirm.`);
+    } catch (e) { appendLog('err', `[${ts()}] Reassign failed: ${e.message}`); alert(`Error: ${e.message}`); }
+  }
+
+  async function manualRead() {
+    if (!connected) { showGuard('Not connected.', 'guard-msg-query'); return; }
+    const addr = parseInt(document.getElementById('m-addr').value);
+    const fc = parseInt(document.getElementById('m-read-fc').value);
+    const reg = parseRegHex(document.getElementById('m-read-reg').value);
+    const count = parseInt(document.getElementById('m-read-count').value);
+    const resEl = document.getElementById('read-result');
+    resEl.className = ''; resEl.style.display = 'none';
+    try {
+      const regs = await modbus.readRegisters(addr, fc, reg, count);
+      resEl.className = ''; resEl.style.display = 'block';
+      resEl.innerHTML = `<b>Dec:</b> ${regs.join(', ')}<br><b>Hex:</b> ${regs.map(v=>'0x'+v.toString(16).toUpperCase().padStart(4,'0')).join(', ')}`;
+    } catch (e) { resEl.className = 'error-box'; resEl.style.display = 'block'; resEl.textContent = e.message; }
+  }
+
+  async function manualWrite() {
+    if (!connected) { showGuard('Not connected.', 'guard-msg-query'); return; }
+    const addr = parseInt(document.getElementById('m-addr').value);
+    const reg = parseRegHex(document.getElementById('m-write-reg').value);
+    const value = parseIntValue(document.getElementById('m-write-val').value);
+    const resEl = document.getElementById('write-result');
+    if (isNaN(value)||value<0||value>65535) { resEl.className='error-box'; resEl.style.display='block'; resEl.textContent='Value must be 0–65535 (decimal or 0xHEX)'; return; }
+    resEl.style.display = 'none';
+    try {
+      await modbus.writeRegister(addr, reg, value);
+      resEl.className = ''; resEl.style.display = 'block';
+      resEl.textContent = `Written ${value} (0x${value.toString(16).toUpperCase().padStart(4,'0')}) → addr ${addr} reg ${formatRegHex(reg)}`;
+    } catch (e) { resEl.className='error-box'; resEl.style.display='block'; resEl.textContent=e.message; }
+  }
+
+  function clearLog() { logLines = []; const el = document.getElementById('comms-log'); if (el) el.innerHTML = ''; }
+
+  function formatLiveVal(value, unit) {
+    if (!Number.isFinite(value)) return '—';
+    const abs = Math.abs(value);
+    let s;
+    if (abs===0) s='0'; else if (abs<0.001) s=value.toExponential(3); else if (abs<1e6) s=parseFloat(value.toPrecision(5)).toString(); else s=value.toFixed(0);
+    return unit ? s+'\u00a0'+unit : s;
+  }
+
+  function renderRegTable() {
+    const tbody = document.getElementById('reg-tbody'), emptyMsg = document.getElementById('reg-empty');
+    tbody.innerHTML = '';
+    const regs = regMgr.registers;
+    emptyMsg.style.display = regs.length===0 ? 'block' : 'none';
+    for (const reg of regs) {
+      const mode = reg.filterMode||'none', filterActive = mode!=='none', rowOpen = _openFilterRows.has(reg.id);
+      const yMinVal = (reg.yMin!==null&&reg.yMin!==undefined)?reg.yMin:'';
+      const yMaxVal = (reg.yMax!==null&&reg.yMax!==undefined)?reg.yMax:'';
+      const tr = document.createElement('tr'); tr.dataset.id = reg.id;
+      tr.innerHTML = `
+        <td><input type="checkbox" ${reg.graphEnabled?'checked':''} onchange="AppUI.onRegChange(${reg.id},'graphEnabled',this.checked)"></td>
+        <td><input type="number" value="${reg.deviceAddr}" min="1" max="247" style="width:42px" onchange="AppUI.onRegChange(${reg.id},'deviceAddr',parseInt(this.value))"></td>
+        <td><input type="text" value="${formatRegHex(reg.register)}" placeholder="0x0000" style="width:62px" onchange="AppUI.onRegChange(${reg.id},'register',parseRegHex(this.value))"></td>
+        <td><input type="text" value="${escHtml(reg.name)}" style="width:90px" onchange="AppUI.onRegChange(${reg.id},'name',this.value)"></td>
+        <td><input type="text" value="${escHtml(reg.unit)}" style="width:38px" onchange="AppUI.onRegChange(${reg.id},'unit',this.value)"></td>
+        <td><select style="width:68px" onchange="AppUI.onRegChange(${reg.id},'type',this.value)">${['uint16','int16','uint32','int32','float32'].map(t=>`<option value="${t}"${reg.type===t?' selected':''}>${t}</option>`).join('')}</select></td>
+        <td><select style="width:46px" onchange="AppUI.onRegChange(${reg.id},'wordOrder',this.value)"><option value="big"${reg.wordOrder==='big'?' selected':''}>AB</option><option value="little"${reg.wordOrder==='little'?' selected':''}>BA</option></select></td>
+        <td><input type="number" value="${reg.multiplier}" step="any" style="width:52px" onchange="AppUI.onRegChange(${reg.id},'multiplier',parseFloat(this.value))"></td>
+        <td><input type="number" value="${reg.offset}" step="any" style="width:52px" onchange="AppUI.onRegChange(${reg.id},'offset',parseFloat(this.value))"></td>
+        <td><input type="color" value="${reg.color}" onchange="AppUI.onRegChange(${reg.id},'color',this.value)"></td>
+        <td class="live-val-cell" id="live-val-${reg.id}">—</td>
+        <td><input type="text" id="y-min-${reg.id}" value="${yMinVal}" placeholder="auto" style="width:52px" onchange="AppUI.onRegYAxis(${reg.id},'yMin',this.value)"></td>
+        <td><input type="text" id="y-max-${reg.id}" value="${yMaxVal}" placeholder="auto" style="width:52px" onchange="AppUI.onRegYAxis(${reg.id},'yMax',this.value)"></td>
+        <td><button class="btn btn-xs btn-secondary" title="Reset Y-axis to auto-range" onclick="AppUI.resetYAxis(${reg.id})">↺</button></td>
+        <td><button class="btn btn-xs ${filterActive?'btn-primary':'btn-secondary'} filter-toggle-btn" onclick="AppUI.toggleFilterRow(${reg.id})" title="Filter / rounding settings">F</button></td>
+        <td><button class="btn btn-danger btn-xs" onclick="AppUI.removeReg(${reg.id})">✕</button></td>`;
+      tbody.appendChild(tr);
+      const showWindow=['ma','wma','median'].includes(mode), showWeight=mode==='wma', showAlpha=['ema','dema'].includes(mode);
+      const filterModes=[['none','None'],['ma','MA'],['wma','WMA'],['ema','EMA'],['dema','DEMA'],['median','Median']];
+      const roundVals=[0,0.001,0.01,0.1,1,10,100,1000];
+      const ftr = document.createElement('tr'); ftr.className='filter-row'; ftr.dataset.filterId=reg.id; ftr.style.display=rowOpen?'':'none';
+      ftr.innerHTML=`<td colspan="16"><div class="filter-controls">
+        <label>Filter:</label>
+        <select id="flt-mode-${reg.id}" style="width:75px" onchange="AppUI.onFilterModeChange(${reg.id},this.value)">${filterModes.map(([v,l])=>`<option value="${v}"${mode===v?' selected':''}>${l}</option>`).join('')}</select>
+        <span class="filter-param" id="flt-win-wrap-${reg.id}"${showWindow?'':' style="display:none"'}><label>Window:</label><input type="number" value="${reg.filterWindow}" min="2" max="200" step="1" style="width:48px" onchange="AppUI.onRegChange(${reg.id},'filterWindow',parseInt(this.value))"></span>
+        <span class="filter-param" id="flt-wt-wrap-${reg.id}"${showWeight?'':' style="display:none"'}><label>Weight K:</label><input type="number" value="${reg.filterWeight}" min="1" max="20" step="0.1" style="width:52px" onchange="AppUI.onRegChange(${reg.id},'filterWeight',parseFloat(this.value))"></span>
+        <span class="filter-param" id="flt-al-wrap-${reg.id}"${showAlpha?'':' style="display:none"'}><label>Alpha:</label><input type="number" value="${reg.filterAlpha}" min="0.001" max="0.999" step="0.01" style="width:58px" onchange="AppUI.onRegChange(${reg.id},'filterAlpha',parseFloat(this.value))"></span>
+        <label>Round:</label>
+        <select id="flt-round-${reg.id}" style="width:72px" onchange="AppUI.onRegChange(${reg.id},'roundStep',parseFloat(this.value))">${roundVals.map(v=>`<option value="${v}"${reg.roundStep===v?' selected':''}>${v===0?'None':v}</option>`).join('')}</select>
+      </div></td>`;
+      tbody.appendChild(ftr);
+    }
+    if (chart) chart.updateDatasets(regs);
+    for (const reg of regs) {
+      if (_liveValues.has(reg.id)) { const el=document.getElementById(`live-val-${reg.id}`); if (el) el.textContent=formatLiveVal(_liveValues.get(reg.id),reg.unit); }
+    }
+  }
+
+  function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function onRegChange(id, field, value) { regMgr.update(id,{[field]:value}); if (chart) chart.updateDatasets(regMgr.registers); }
+  function onRegYAxis(id, field, rawValue) { const t=rawValue.trim(), val=t===''?null:parseFloat(t); regMgr.update(id,{[field]:(t!==''&&Number.isFinite(val))?val:null}); }
+  function resetYAxis(id) {
+    regMgr.update(id,{yMin:null,yMax:null});
+    const yn=document.getElementById(`y-min-${id}`), yx=document.getElementById(`y-max-${id}`);
+    if (yn) yn.value=''; if (yx) yx.value='';
+    if (chart) { const axis=chart.chart.options.scales['y_'+id]; if (axis) { delete axis.min; delete axis.max; chart.chart.update('none'); } }
+  }
+  function onFilterModeChange(id, value) { regMgr.update(id,{filterMode:value}); updateFilterVisibility(id); }
+  function updateFilterVisibility(id) {
+    const reg=regMgr.registers.find(r=>r.id===id); if (!reg) return;
+    const mode=reg.filterMode||'none';
+    const ww=document.getElementById(`flt-win-wrap-${id}`), wtw=document.getElementById(`flt-wt-wrap-${id}`), aw=document.getElementById(`flt-al-wrap-${id}`);
+    if (ww) ww.style.display=['ma','wma','median'].includes(mode)?'':'none';
+    if (wtw) wtw.style.display=mode==='wma'?'':'none';
+    if (aw) aw.style.display=['ema','dema'].includes(mode)?'':'none';
+    const mainRow=document.querySelector(`tr[data-id="${id}"]`);
+    if (mainRow) { const fBtn=mainRow.querySelector('.filter-toggle-btn'); if (fBtn) fBtn.className=`btn btn-xs ${mode!=='none'?'btn-primary':'btn-secondary'} filter-toggle-btn`; }
+  }
+  function toggleFilterRow(id) {
+    if (_openFilterRows.has(id)) _openFilterRows.delete(id); else _openFilterRows.add(id);
+    const ftr=document.querySelector(`tr[data-filter-id="${id}"]`); if (ftr) ftr.style.display=_openFilterRows.has(id)?'':'none';
+  }
+  function addRegisterRow() { regMgr.add({}); renderRegTable(); }
+  function removeReg(id) { _openFilterRows.delete(id); _liveValues.delete(id); regMgr.remove(id); renderRegTable(); }
+  function importCSV() { document.getElementById('csv-file-input').click(); }
+  function importJSON() { document.getElementById('json-file-input').click(); }
+  function exportJSON() { regMgr.exportJSON(); }
+  function onCSVFile(event) {
+    const file=event.target.files[0]; if (!file) return;
+    const reader=new FileReader();
+    reader.onload=e=>{try{const n=regMgr.importCSV(e.target.result);renderRegTable();alert(`Imported ${n} register(s) from CSV.`);}catch(err){alert(`CSV import error: ${err.message}`);}};
+    reader.readAsText(file); event.target.value='';
+  }
+  function onJSONFile(event) {
+    const file=event.target.files[0]; if (!file) return;
+    const reader=new FileReader();
+    reader.onload=e=>{try{const n=regMgr.importJSON(e.target.result);renderRegTable();alert(`Imported ${n} register(s) from JSON.`);}catch(err){alert(`JSON import error: ${err.message}`);}};
+    reader.readAsText(file); event.target.value='';
+  }
+
+  function togglePolling() {
+    if (!connected) { showGuard('Not connected.', 'guard-msg-poll'); return; }
+    const activeRegs = regMgr.registers.filter(r=>r.graphEnabled);
+    if (activeRegs.length===0) { showGuard('No registers with graph enabled.', 'guard-msg-poll'); return; }
+    if (polling) {
+      logger.stopPolling(); polling=false;
+      document.getElementById('btn-poll').textContent='▶ Start Polling';
+      document.getElementById('btn-poll').className='btn btn-success';
+      document.getElementById('poll-status').textContent='';
+    } else {
+      const intervalMs=parseInt(document.getElementById('poll-interval').value)||1000;
+      savePollInterval(); polling=true;
+      document.getElementById('btn-poll').textContent='⏹ Stop';
+      document.getElementById('btn-poll').className='btn btn-danger';
+      document.getElementById('poll-status').textContent='Polling…';
+      logger.startPolling(activeRegs, intervalMs, modbus, regMgr, (reg, timestamp, value) => {
+        if (chart) chart.addPoint(reg.id, timestamp, value, reg);
+        _liveValues.set(reg.id, value);
+        const liveEl=document.getElementById(`live-val-${reg.id}`); if (liveEl) liveEl.textContent=formatLiveVal(value,reg.unit);
+        appendLog('info', `[${new Date(timestamp).toISOString().slice(11,23)}] ${reg.name}: ${value}${reg.unit}`);
+      });
+    }
+  }
+
+  function exportCSV() { logger.exportCSV(); }
+  function clearGraph() { if (chart) chart.clearAll(); }
+
+  function toggleSection(id) {
+    const body=document.getElementById(`section-body-${id}`), btn=document.getElementById(`section-toggle-${id}`);
+    if (!body) return;
+    const isOpen=body.style.display!=='none';
+    body.style.display=isOpen?'none':'';
+    if (btn) btn.textContent=isOpen?'▼':'▲';
+    localStorage.setItem(`modbus_section_open_${id}`, String(!isOpen));
+  }
+
+  function loadSectionStates() {
+    for (const id of ['port','scan','query']) {
+      const saved=localStorage.getItem(`modbus_section_open_${id}`);
+      if (saved==='false') {
+        const body=document.getElementById(`section-body-${id}`), btn=document.getElementById(`section-toggle-${id}`);
+        if (body) body.style.display='none'; if (btn) btn.textContent='▼';
+      }
+    }
+  }
+
+  function initSplitter() {
+    const splitter=document.getElementById('splitter'), chartPanel=document.getElementById('chart-panel');
+    if (!splitter||!chartPanel) return;
+    const saved=localStorage.getItem('modbus_chart_height');
+    if (saved) chartPanel.style.flex=`0 0 ${saved}px`;
+    splitter.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const startY=e.clientY, startH=chartPanel.getBoundingClientRect().height;
+      const onMove=ev=>{chartPanel.style.flex=`0 0 ${Math.max(100,startH+ev.clientY-startY)}px`;};
+      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);localStorage.setItem('modbus_chart_height',chartPanel.getBoundingClientRect().height);};
+      document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
+    });
+  }
+
+  function savePortSettings() {
+    localStorage.setItem('modbus_port_settings', JSON.stringify({
+      baud: document.getElementById('baud').value, dataBits: document.getElementById('dataBits').value,
+      parity: document.getElementById('parity').value, stopBits: document.getElementById('stopBits').value,
+      timeout: document.getElementById('timeout').value
+    }));
+  }
+  function loadPortSettings() {
+    try {
+      const s=JSON.parse(localStorage.getItem('modbus_port_settings')||'{}');
+      if (s.baud) setSelectValue('baud',s.baud); if (s.dataBits) setSelectValue('dataBits',s.dataBits);
+      if (s.parity) setSelectValue('parity',s.parity); if (s.stopBits) setSelectValue('stopBits',s.stopBits);
+      if (s.timeout) document.getElementById('timeout').value=s.timeout;
+    } catch(e){}
+  }
+  function savePollInterval() { localStorage.setItem('modbus_poll_interval', document.getElementById('poll-interval').value); }
+  function loadPollInterval() { const v=localStorage.getItem('modbus_poll_interval'); if (v) setSelectValue('poll-interval',v); }
+  function setSelectValue(id, value) { const el=document.getElementById(id); if (!el) return; for (const opt of el.options) { if (opt.value===String(value)){opt.selected=true;return;} } }
+  function ts() { return new Date().toISOString().slice(11,23); }
+
+  function init() {
+    chart = new ChartManager('live-chart');
+    loadPortSettings(); loadPollInterval(); loadSectionStates(); initSplitter(); renderRegTable(); updateConnStatus();
+    const logEl=document.getElementById('comms-log');
+    if (logEl) { logEl.addEventListener('mouseenter',()=>{_logPaused=true;}); logEl.addEventListener('mouseleave',()=>{_logPaused=false;}); }
+    if (!navigator.serial) {
+      appendLog('err','[INIT] Web Serial API not supported. Use Chrome or Edge.');
+      const btn=document.getElementById('btn-connect'); btn.disabled=true; btn.title='Web Serial API not supported';
+    } else { appendLog('info','[INIT] Modbus RS485 Tool v4.0 ready.'); }
+  }
+
+  return { toggleConnect, startScan, reassignAddress, manualRead, manualWrite, clearLog,
+    addRegisterRow, removeReg, onRegChange, onRegYAxis, resetYAxis,
+    onFilterModeChange, updateFilterVisibility, toggleFilterRow,
+    importCSV, importJSON, exportJSON, onCSVFile, onJSONFile,
+    togglePolling, exportCSV, clearGraph, toggleSection, init };
+})();
+
+document.addEventListener('DOMContentLoaded', () => AppUI.init());
+</script>
+</body>
+</html>

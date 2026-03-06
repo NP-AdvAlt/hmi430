@@ -1,0 +1,22 @@
+CONSTSEG
+
+; Colors are not defined here - using HMI system defaults
+
+; Serial port
+SERIAL_PORT     EQU 0           ; USB CDC serial (COM11 on PC side)
+
+; Screen (480x272 physical display)
+SCR_W           EQU 480
+SCR_H           EQU 272
+
+; Touch grid layout: 3 columns x 3 rows
+; Col 0: px 0-159   -> CNC X 107-138
+; Col 1: px 160-319 -> CNC X  76-107
+; Col 2: px 320-479 -> CNC X  45-76
+; Row 0: py 0-90    -> CNC Y -77 to -60
+; Row 1: py 91-181  -> CNC Y -60 to -43
+; Row 2: py 182-271 -> CNC Y -43 to -26  (CFG=col0, SET=col2)
+ZONE_W          EQU 160
+ZONE_H0         EQU 91
+ZONE_H1         EQU 91
+ZONE_H2         EQU 90
