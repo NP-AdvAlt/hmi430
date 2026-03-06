@@ -47,37 +47,37 @@ drawGrid:
 ; ---------------------------------------------------------------------------
 
 onZone00:
-    #HMI ButtonEvent2(id:1, x:0px, y:0px, w:160px, h:91px, t:"P:0,0", ev:onZone00)
+    #HMI ButtonEvent2(id:1, x:0px, y:0px, w:160px, h:91px, t:"P:0,0", rb:'FFFFFFFF, ev:onZone00)
     Return
 
 onZone10:
-    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:160px, h:91px, t:"P:1,0", ev:onZone10)
+    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:160px, h:91px, t:"P:1,0", rb:'FFFFFFFF, ev:onZone10)
     Return
 
 onZone20:
-    #HMI ButtonEvent2(id:3, x:320px, y:0px, w:160px, h:91px, t:"P:2,0", ev:onZone20)
+    #HMI ButtonEvent2(id:3, x:320px, y:0px, w:160px, h:91px, t:"P:2,0", rb:'FFFFFFFF, ev:onZone20)
     Return
 
 onZone01:
-    #HMI ButtonEvent2(id:4, x:0px, y:91px, w:160px, h:91px, t:"P:0,1", ev:onZone01)
+    #HMI ButtonEvent2(id:4, x:0px, y:91px, w:160px, h:91px, t:"P:0,1", rb:'FFFFFFFF, ev:onZone01)
     Return
 
 onZone11:
-    #HMI ButtonEvent2(id:5, x:160px, y:91px, w:160px, h:91px, t:"P:1,1", ev:onZone11)
+    #HMI ButtonEvent2(id:5, x:160px, y:91px, w:160px, h:91px, t:"P:1,1", rb:'FFFFFFFF, ev:onZone11)
     Return
 
 onZone21:
-    #HMI ButtonEvent2(id:6, x:320px, y:91px, w:160px, h:91px, t:"P:2,1", ev:onZone21)
+    #HMI ButtonEvent2(id:6, x:320px, y:91px, w:160px, h:91px, t:"P:2,1", rb:'FFFFFFFF, ev:onZone21)
     Return
 
 onZone02:
-    #HMI ButtonEvent2(id:7, x:0px, y:182px, w:160px, h:90px, t:"P:0,2", ev:onZone02)
+    #HMI ButtonEvent2(id:7, x:0px, y:182px, w:160px, h:90px, t:"P:0,2", rb:'FFFFFFFF, ev:onZone02)
     Return
 
 onZone12:
-    #HMI ButtonEvent2(id:8, x:160px, y:182px, w:160px, h:90px, t:"P:1,2", ev:onZone12)
+    #HMI ButtonEvent2(id:8, x:160px, y:182px, w:160px, h:90px, t:"P:1,2", rb:'FFFFFFFF, ev:onZone12)
     Return
 
 onZone22:
-    #HMI ButtonEvent2(id:9, x:320px, y:182px, w:160px, h:90px, t:"P:2,2", ev:onZone22)
+    #HMI ButtonEvent2(id:9, x:320px, y:182px, w:160px, h:90px, t:"P:2,2", rb:'FFFFFFFF, ev:onZone22)
     Return
