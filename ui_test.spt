@@ -1,8 +1,7 @@
-; ui_test.spt — touch test screen (continues in CODESEG from helpers.spt)
-
+; ui_test.spt -- adaptive calibration grid (30 buttons)
 uiTask:
     YieldTask
-    YieldTask                               ; duplicate: 2-byte, Patch B doesn't fix 2-byte, must duplicate
+    YieldTask
 uiTask_draw:
     GoSub drawGrid
     YieldTask
@@ -11,73 +10,163 @@ uiTask_idle:
     Pause 500
     GoTo uiTask_idle
 
-; ---------------------------------------------------------------------------
-; drawGrid: draws the 3x3 touch zone grid
-; ---------------------------------------------------------------------------
-
 drawGrid:
+    #HMI SetColours(f:'FFFFFFFF, b:'FF000000)
     #HMI Reset(b:0)
     ClrInstCount
-
-    ; Row 0 (top, py 0-90) -> CNC Y=-77 to -60
-    #HMI ButtonEvent2(id:1, x:0px, y:0px, w:160px, h:91px, t:"X107-138 Y-77/-60", ev:onZone00)
-    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:160px, h:91px, t:"X76-107 Y-77/-60", ev:onZone10)
-    #HMI ButtonEvent2(id:3, x:320px, y:0px, w:160px, h:91px, t:"X45-76 Y-77/-60", ev:onZone20)
+    #HMI ButtonEvent2(id:0, x:0px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn0)
+    #HMI ButtonEvent2(id:1, x:80px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn1)
+    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn2)
+    #HMI ButtonEvent2(id:3, x:240px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn3)
+    #HMI ButtonEvent2(id:4, x:320px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn4)
     ClrInstCount
-
-    ; Row 1 (middle, py 91-181) -> CNC Y=-60 to -43
-    #HMI ButtonEvent2(id:4, x:0px, y:91px, w:160px, h:91px, t:"X107-138 Y-60/-43", ev:onZone01)
-    #HMI ButtonEvent2(id:5, x:160px, y:91px, w:160px, h:91px, t:"X76-107 Y-60/-43", ev:onZone11)
-    #HMI ButtonEvent2(id:6, x:320px, y:91px, w:160px, h:91px, t:"X45-76 Y-60/-43", ev:onZone21)
+    #HMI ButtonEvent2(id:5, x:400px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn5)
+    #HMI ButtonEvent2(id:6, x:0px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn6)
+    #HMI ButtonEvent2(id:7, x:80px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn7)
+    #HMI ButtonEvent2(id:8, x:160px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn8)
+    #HMI ButtonEvent2(id:9, x:240px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn9)
     ClrInstCount
-
-    ; Row 2 (bottom, py 182-271) -> CNC Y=-43 to -26  (CFG=col0, SET=col2)
-    #HMI ButtonEvent2(id:7, x:0px, y:182px, w:160px, h:90px, t:"CFG X107-138 Y-43/-26", ev:onZone02)
-    #HMI ButtonEvent2(id:8, x:160px, y:182px, w:160px, h:90px, t:"X76-107 Y-43/-26", ev:onZone12)
-    #HMI ButtonEvent2(id:9, x:320px, y:182px, w:160px, h:90px, t:"SET X45-76 Y-43/-26", ev:onZone22)
+    #HMI ButtonEvent2(id:10, x:320px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn10)
+    #HMI ButtonEvent2(id:11, x:400px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn11)
+    #HMI ButtonEvent2(id:12, x:0px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn12)
+    #HMI ButtonEvent2(id:13, x:80px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn13)
+    #HMI ButtonEvent2(id:14, x:160px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn14)
     ClrInstCount
-
+    #HMI ButtonEvent2(id:15, x:240px, y:109px, w:80px, h:54px, t:" ", rb:'FFA0A0A0, ev:onBtn15)
+    #HMI ButtonEvent2(id:16, x:320px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn16)
+    #HMI ButtonEvent2(id:17, x:400px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn17)
+    #HMI ButtonEvent2(id:18, x:0px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn18)
+    #HMI ButtonEvent2(id:19, x:80px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn19)
+    ClrInstCount
+    #HMI ButtonEvent2(id:20, x:160px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn20)
+    #HMI ButtonEvent2(id:21, x:240px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn21)
+    #HMI ButtonEvent2(id:22, x:320px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn22)
+    #HMI ButtonEvent2(id:23, x:400px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn23)
+    #HMI ButtonEvent2(id:24, x:0px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn24)
+    ClrInstCount
+    #HMI ButtonEvent2(id:25, x:80px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn25)
+    #HMI ButtonEvent2(id:26, x:160px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn26)
+    #HMI ButtonEvent2(id:27, x:240px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn27)
+    #HMI ButtonEvent2(id:28, x:320px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn28)
+    #HMI ButtonEvent2(id:29, x:400px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn29)
     Return
 
-; ---------------------------------------------------------------------------
-; Button event handlers — update pressed button text to "P:col,row"
-; Uses ButtonEvent2 with same geometry + same ev: handler (idempotent)
-; Button-sized text is large enough for camera OCR — no Reset needed
-; NOTE: No serial output — all Port(N) calls corrupt the HMI display serial
-; ---------------------------------------------------------------------------
-
-onZone00:
-    #HMI ButtonEvent2(id:1, x:0px, y:0px, w:160px, h:91px, t:"P:0,0", rb:'FFFFFFFF, ev:onZone00)
+onBtn0:
+    #HMI ButtonEvent2(id:0, x:0px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn0)
     Return
 
-onZone10:
-    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:160px, h:91px, t:"P:1,0", rb:'FFFFFFFF, ev:onZone10)
+onBtn1:
+    #HMI ButtonEvent2(id:1, x:80px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn1)
     Return
 
-onZone20:
-    #HMI ButtonEvent2(id:3, x:320px, y:0px, w:160px, h:91px, t:"P:2,0", rb:'FFFFFFFF, ev:onZone20)
+onBtn2:
+    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn2)
     Return
 
-onZone01:
-    #HMI ButtonEvent2(id:4, x:0px, y:91px, w:160px, h:91px, t:"P:0,1", rb:'FFFFFFFF, ev:onZone01)
+onBtn3:
+    #HMI ButtonEvent2(id:3, x:240px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn3)
     Return
 
-onZone11:
-    #HMI ButtonEvent2(id:5, x:160px, y:91px, w:160px, h:91px, t:"P:1,1", rb:'FFFFFFFF, ev:onZone11)
+onBtn4:
+    #HMI ButtonEvent2(id:4, x:320px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn4)
     Return
 
-onZone21:
-    #HMI ButtonEvent2(id:6, x:320px, y:91px, w:160px, h:91px, t:"P:2,1", rb:'FFFFFFFF, ev:onZone21)
+onBtn5:
+    #HMI ButtonEvent2(id:5, x:400px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn5)
     Return
 
-onZone02:
-    #HMI ButtonEvent2(id:7, x:0px, y:182px, w:160px, h:90px, t:"P:0,2", rb:'FFFFFFFF, ev:onZone02)
+onBtn6:
+    #HMI ButtonEvent2(id:6, x:0px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn6)
     Return
 
-onZone12:
-    #HMI ButtonEvent2(id:8, x:160px, y:182px, w:160px, h:90px, t:"P:1,2", rb:'FFFFFFFF, ev:onZone12)
+onBtn7:
+    #HMI ButtonEvent2(id:7, x:80px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn7)
     Return
 
-onZone22:
-    #HMI ButtonEvent2(id:9, x:320px, y:182px, w:160px, h:90px, t:"P:2,2", rb:'FFFFFFFF, ev:onZone22)
+onBtn8:
+    #HMI ButtonEvent2(id:8, x:160px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn8)
+    Return
+
+onBtn9:
+    #HMI ButtonEvent2(id:9, x:240px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn9)
+    Return
+
+onBtn10:
+    #HMI ButtonEvent2(id:10, x:320px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn10)
+    Return
+
+onBtn11:
+    #HMI ButtonEvent2(id:11, x:400px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn11)
+    Return
+
+onBtn12:
+    #HMI ButtonEvent2(id:12, x:0px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn12)
+    Return
+
+onBtn13:
+    #HMI ButtonEvent2(id:13, x:80px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn13)
+    Return
+
+onBtn14:
+    #HMI ButtonEvent2(id:14, x:160px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn14)
+    Return
+
+onBtn15:
+    #HMI ButtonEvent2(id:15, x:240px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn15)
+    Return
+
+onBtn16:
+    #HMI ButtonEvent2(id:16, x:320px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn16)
+    Return
+
+onBtn17:
+    #HMI ButtonEvent2(id:17, x:400px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn17)
+    Return
+
+onBtn18:
+    #HMI ButtonEvent2(id:18, x:0px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn18)
+    Return
+
+onBtn19:
+    #HMI ButtonEvent2(id:19, x:80px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn19)
+    Return
+
+onBtn20:
+    #HMI ButtonEvent2(id:20, x:160px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn20)
+    Return
+
+onBtn21:
+    #HMI ButtonEvent2(id:21, x:240px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn21)
+    Return
+
+onBtn22:
+    #HMI ButtonEvent2(id:22, x:320px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn22)
+    Return
+
+onBtn23:
+    #HMI ButtonEvent2(id:23, x:400px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn23)
+    Return
+
+onBtn24:
+    #HMI ButtonEvent2(id:24, x:0px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn24)
+    Return
+
+onBtn25:
+    #HMI ButtonEvent2(id:25, x:80px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn25)
+    Return
+
+onBtn26:
+    #HMI ButtonEvent2(id:26, x:160px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn26)
+    Return
+
+onBtn27:
+    #HMI ButtonEvent2(id:27, x:240px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn27)
+    Return
+
+onBtn28:
+    #HMI ButtonEvent2(id:28, x:320px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn28)
+    Return
+
+onBtn29:
+    #HMI ButtonEvent2(id:29, x:400px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn29)
     Return
