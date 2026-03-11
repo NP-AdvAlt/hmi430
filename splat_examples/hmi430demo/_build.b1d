@@ -1,0 +1,63 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;
+;DESCRIPTION:
+; Imatech app build file.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+HEADERSEG                                             ;Initial header comments for whole program
+CONSTSEG                                              ;Very early for easy access
+MEQUSEG                                               ;PermStore, ModBus absolutes etc.
+IOSEG
+DEF_SEM                                               ;defSEM directives
+DEF_BYTE                                              ;defBYTE directives
+DEF_WORD                                              ;defWORD directives
+DEF_TIME24                                            ;defTIME24 directives
+DEF_FLOAT                                             ;defFLOAT directives
+DEF_BLOCK                                             ;defBLOCK directives
+POWERONSEG ONEONLY
+INITSEG                                               ;each module can do it's initialisation here
+LAUNCHSEG ONEONLY
+CODESEG
+DEBUG DISCARD                                         ;Enable as required for debug code
+TESTSEG DISCARD                                       ;Enable as required for test code
+NVEM0DIR ONEONLY                                      ;Marker for the start of non-volatile memory
+NVEM0MODBUSDATA                                       ;MODBUS NVEM data goes FIRST!
+NVEM0DATA
+DOCCOSEG DISCARD
+
+
+;===============================================================================
+;
+; FILE LIST
+;
+;===============================================================================
+#---                                                  ;Special marker that identifies the start of the file list
+brightness.spt
+buttons.spt
+common.spt
+demo_io.spt
+hmi430_io.spt
+launch.spt
+thermostat.spt
+ui.spt
+ui_idle.spt
+ui_menu.spt
+ui_number_entry.spt
+ui_popup.spt
+ui_setdate.spt
+ui_settime.spt
+ui_therm.spt
+ui_utils.spt
+utils.spt
+

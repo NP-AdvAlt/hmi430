@@ -1,0 +1,70 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;                            http://www.splatco.com                            ;
+;===============================================================================
+;
+;DESCRIPTION:
+; App build file.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2017 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+;choose target controller
+HMI430
+HMI700 DISCARD
+
+HEADERSEG                                             ;Initial header comments for whole program
+CONSTSEG                                              ;Very early for easy access
+MEQUSEG                                               ;PermStore, ModBus absolutes etc.
+IOSEG
+DEF_SEM                                               ;defSEM directives
+DEF_BYTE                                              ;defBYTE directives
+DEF_WORD                                              ;defWORD directives
+DEF_TIME24                                            ;defTIME24 directives
+DEF_FLOAT                                             ;defFLOAT directives
+DEF_BLOCK                                             ;defBLOCK directives
+POWERONSEG ONEONLY
+INITSEG                                               ;each module can do it's initialisation here
+LAUNCHSEG ONEONLY
+DEMOSEG DISCARD
+CODESEG
+DEBUG DISCARD                                         ;Enable as required for debug code
+TESTSEG DISCARD                                       ;Enable as required for test code
+NVEM0DIR ONEONLY                                      ;Marker for the start of non-volatile memory
+NVEM0MODBUSDATA                                       ;MODBUS NVEM data goes FIRST!
+NVEM0DATA
+DOCCOSEG DISCARD
+
+
+;===============================================================================
+;
+; FILE LIST
+;
+;===============================================================================
+#---                                                  ;Special marker that identifies the start of the file list
+config.spt
+io.spt
+launch.spt
+number_entry.spt
+permmem.spt
+ui.spt
+ui_common.spt
+ui_home.spt
+ui_menu.spt
+ui_screen1.spt
+ui_screen2.spt
+ui_screen3.spt
+ui_setdate.spt
+ui_settime.spt
+ui_utils.spt
+uiframework.spt
+utils.spt
+xwire.spt
+

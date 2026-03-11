@@ -1,0 +1,448 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Thermostat UI
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+UITsDoPerm     defSEM
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Called by any task to request display of this screen.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubScreenShowTherm:
+   LoadX          UIkScreenTherm
+   Goto           UIsubSetScreen
+
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+UIscreenTherm:
+   ClrS           UITsDoPerm
+
+   #HMI           Reset( b:HUEkLightestGray )
+   #HMI           SetFont( "prop25.fon" )
+
+   GoSub          UIsubDrawHeading
+   #HMI           Print( "\CClimate Control" );
+   #HMI           SetBounds()
+
+   #HMI           SetColours( f:HUEkDarkGray, b:HUEkTransparent )
+   #HMI           SetBounds( x:0px, y:0px, w:145px, h:272px )
+   #HMI           SetCursor( x:0px, y:67px )
+   #HMI           Print( "\RFan" );
+   #HMI           SetCursor( x:0px, y:122px )
+   #HMI           Print( "\RRelay" );
+   #HMI           SetCursor( x:0px, y:177px )
+   #HMI           Print( "\RTemperature" );
+   #HMI           SetCursor( x:0px, y:237px )
+   #HMI           Print( "\RCurrently" );
+
+   #HMI           SetColours( f:HUEkDarkDarkGray, b:HUEkLightGray )
+   #HMI           SetFont( f:"prop25.fon" )
+   #HMI           ButtonEvent2( id:4,  x:150px, y:35px,  w:69px, h:54px, m:"g0", t:"On",   pf:HUEkWhite,       pb:HUEkGreen, ev:UITHRMsubBtnFanOn )
+   #HMI           ButtonEvent2( id:5,  x:220px, y:35px,  w:69px, h:54px, m:"g0", t:"Off",  pf:HUEkWhite,       pb:HUEkGreen, ev:UITHRMsubBtnFanOff )
+   #HMI           ButtonEvent2( id:6,  x:290px, y:35px,  w:69px, h:54px, m:"g0", t:"Auto", pf:HUEkWhite,       pb:HUEkGreen, ev:UITHRMsubBtnFanAuto )
+
+   #HMI           ButtonEvent2( id:7,  x:150px, y:90px,  w:69px, h:54px, m:"g1", t:"On",   pf:HUEkWhite,       pb:HUEkGreen, ev:UITHRMsubBtnRlyOn )
+   #HMI           ButtonEvent2( id:8,  x:220px, y:90px,  w:69px, h:54px, m:"g1", t:"Off",  pf:HUEkWhite,       pb:HUEkGreen, ev:UITHRMsubBtnRlyOff )
+   #HMI           ButtonEvent2( id:9,  x:290px, y:90px,  w:69px, h:54px, m:"g1", t:"Auto", pf:HUEkWhite,       pb:HUEkGreen, ev:UITHRMsubBtnRlyAuto )
+
+   #HMI           ButtonEvent2( id:0,  x:150px, y:145px, w:69px, h:54px, m:"r10", t:"-",  ev:UITHRMsubBtnThermAdj )
+   #HMI           ButtonEvent2( id:1,  x:290px, y:145px, w:69px, h:54px, m:"r10", t:"+",  ev:UITHRMsubBtnThermAdj )
+
+   #HMI           ButtonEvent2( id:2,  x:220px, y:200px, w:69px, h:54px, m:"g2", t:"°C",          pf:HUEkWhite,       pb:HUEkGreen, ev:UITHRMsubBtnUnits )
+   #HMI           ButtonEvent2( id:3,  x:290px, y:200px, w:69px, h:54px, m:"g2", t:"°F",          pf:HUEkWhite,       pb:HUEkGreen, ev:UITHRMsubBtnUnits )
+
+   #HMI           SetColours( f:HUEkDarkGray, b:HUEkWhite )
+   #HMI           ButtonEvent2(        x:366px, y:117px, w:108px, h:54px, t:"EXIT", ev:UIsubScreenShowMenu )
+
+   GoSub          UITHRMsubUpdateFanButtons
+   GoSub          UITHRMsubUpdateRelayButtons
+   GoSub          UITHRMsubUpdateUnitsButtons
+   GoSub          UITHRMsubDispSetTemp
+
+   #HMI           SetColours( f:HUEkDarkGray, b:HUEkTransparent )
+
+_UITHRMLoop
+   Pause          10
+  ;GoIfST         UIsNewScreen,UIDoNewScreen          ;jump if there's a new screen to display
+   GoIfST         UIsNewScreen,_UITExit               ;jump if there's a new screen to display
+   GoSub          UITHRMsubDispCurrent
+   Goto           _UITHRMLoop
+
+_UITExit
+   GoIfSF         UITsDoPerm,_UITNoChange             ;jump if no values changed
+   PermStore                                          ;otherwise re-write permstore
+_UITNoChange
+   Goto           UIDoNewScreen
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubUpdateFanButtons:
+   GoIfST         PMsFlagsFanAuto,PMbFlags,UITHRMFanAuto
+   InputO         oFan
+   GoIfT          UITHRMFanIsOn
+   #HMI           ButtonEvent2( id:5, m:"p1" )
+   Return
+
+UITHRMFanIsOn
+   #HMI           ButtonEvent2( id:4, m:"p1" )
+   Return
+
+UITHRMFanAuto
+   #HMI           ButtonEvent2( id:6, m:"p1" )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubUpdateRelayButtons:
+   GoIfST         PMsFlagsRelayAuto,PMbFlags,UITHRMRelayAuto
+   InputO         oRelay
+   GoIfT          UITHRMRelayIsOn
+   #HMI           ButtonEvent2( id:8, m:"p1" )
+   Return
+
+UITHRMRelayIsOn
+   #HMI           ButtonEvent2( id:7, m:"p1" )
+   Return
+
+UITHRMRelayAuto
+   #HMI           ButtonEvent2( id:9, m:"p1" )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubUpdateUnitsButtons:
+   GoIfST         PMsFlagsFarenheit,PMbFlags,UITHRMInFarenheit
+   #HMI           ButtonEvent2( id:2, m:"p1" )
+   Return
+UITHRMInFarenheit
+   #HMI           ButtonEvent2( id:3, m:"p1" )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubDispSetTemp:
+   #HMI           SetFont( "prop35.fon" )
+   #HMI           SetColours( f:HUEkDarkDarkGray, b:HUEkWhite )
+   #HMI           SetBounds( x:222px, y:147px, w:65px, h:50px )
+   #HMI           Cls()
+   #HMI           SetCursor( x:0, y:35px )
+   GoIfST         PMsFlagsFarenheit,_UITHRMDispFar
+   #HMI           Print( "\C", f(*PMfTemperatureTrip,3,0) )
+   Goto           _UITHRMEndDispSet
+_UITHRMDispFar
+   #HMI           Print( "\C", f(*PMfTemperatureTrip,3,0) )
+_UITHRMEndDispSet
+   #HMI           SetColours( f:HUEkDarkDarkGray, b:HUEkTransparent )
+   #HMI           SetBounds()
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubDispCurrent:
+   #HMI           SetFont( "prop35.fon" )
+   #HMI           SetColours( f:HUEkDarkDarkGray, b:HUEkTransparent )
+   #HMI           SetBounds( x:150px, y:205px, w:69px, h:54px )
+   #HMI           Cls()
+   GoSub          THERMsubGetTemperature
+   fLoadQ         -999.0
+   fGoIfWleQ      _UITHRMEndDispCurrent
+   #HMI           Print( f(=w,4,1) )
+_UITHRMEndDispCurrent
+   #HMI           SetBounds()
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+UITHRMsubBtnFanOn:
+   ClrS           PMsFlagsFanAuto,PMbFlags
+   On             oFan
+   SetS           UITsDoPerm
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubBtnFanOff:
+   ClrS           PMsFlagsFanAuto,PMbFlags
+   Off            oFan
+   SetS           UITsDoPerm
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubBtnFanAuto:
+   SetS           PMsFlagsFanAuto,PMbFlags
+   SetS           UITsDoPerm
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubBtnRlyOn:
+   ClrS           PMsFlagsRelayAuto,PMbFlags
+   On             oRelay
+   SetS           UITsDoPerm
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubBtnRlyOff:
+   ClrS           PMsFlagsRelayAuto,PMbFlags
+   Off            oRelay
+   SetS           UITsDoPerm
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubBtnRlyAuto:
+   SetS           PMsFlagsRelayAuto,PMbFlags
+   SetS           UITsDoPerm
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubBtnThermAdj:
+   GoSub          UIsubGetButton
+   Pop
+   GoIfT          _UITHRMInc
+   fLoadQ         -1.0
+   Goto           _UITHRMAdj
+_UITHRMInc
+   fLoadQ         1.0
+_UITHRMAdj
+   fRecallW       PMfTemperatureTrip
+   fAdd
+   fStore         PMfTemperatureTrip
+   GoSub          THERMsubApplyLimits
+   SetS           UITsDoPerm
+   Goto           UITHRMsubDispSetTemp
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UITHRMsubBtnUnits:
+   GoSub          UIsubGetButton
+   Pop
+   GoIfXeq        3,UITHRMDoFarenheit
+   GoIfSF         PMsFlagsFarenheit,PMbFlags,Return   ;nothing to do if already C
+   ClrS           PMsFlagsFarenheit,PMbFlags
+   fRecallW       PMfTemperatureTrip
+   GoSub          THERMsubFtoC
+   Goto           _UITHRMStoreTherm
+
+UITHRMDoFarenheit
+   GoIfST         PMsFlagsFarenheit,PMbFlags,Return   ;nothing to do if already F
+   SetS           PMsFlagsFarenheit,PMbFlags
+   fRecallW       PMfTemperatureTrip
+   GoSub          THERMsubCtoF
+
+_UITHRMStoreTherm
+   fStore         PMfTemperatureTrip
+   SetS           UITsDoPerm
+   Goto           UITHRMsubDispSetTemp
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+

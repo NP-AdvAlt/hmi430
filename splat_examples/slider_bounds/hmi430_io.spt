@@ -1,0 +1,65 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;                            http://www.splatco.com                            ;
+;===============================================================================
+;PURPOSE:
+; This is the I/O Map for the HMI430 board.  You may either:
+;  - copy and paste into your own .spt file
+;  - use the # include directive to include the file
+;  - include it in a build file
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+;all digital inputs are bi-directional, hence are shared with the digital outputs
+iIp0              iEQU  0
+iIp1              iEQU  1
+iIp2              iEQU  2
+iIp3              iEQU  3
+iIp4              iEQU  4
+iIp5              iEQU  5
+iIp6              iEQU  6
+iIp7              iEQU  7
+
+;-- digital outputs --
+;all digital outputs are bi-directional, hence are shared with the digital inputs
+oOp0              oEQU  0
+oOp1              oEQU  1
+oOp2              oEQU  2
+oOp3              oEQU  3
+oOp4              oEQU  4
+oOp5              oEQU  5
+oOp6              oEQU  6
+oOp7              oEQU  7
+oBuzzer           oEQU  8
+
+;-- analogue inputs --
+aiA               EQU   0
+aiB               EQU   1
+
+;-- analogue outputs --
+aoC               EQU   0
+
+;-- serial --
+COMHMI            EQU   251                           ;a virtual serial port that is the SimpleHMI interface to the touch screen
+COM0              EQU   252                           ;the TTL serial port
+COM1              EQU   253                           ;the TTL serial port
+COM485            EQU   254                           ;the RS485 port (may be used as Xwire via the XwirePhys 1 instruction)
+COMUSB            EQU   255                           ;the USB serial port (used by SPLat/PC, but may be changed to user coms 10 seconds after your app starts)
+
+

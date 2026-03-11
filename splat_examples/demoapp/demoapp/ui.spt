@@ -1,0 +1,213 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Core UI screen switcher.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+   GoSub          _UIsubInitialise
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+;-- screen ID's
+UIkScreenIdle                 EQU   0
+UIkScreenMenu                 EQU   1
+UIkScreenSetTime              EQU   2
+UIkScreenSetDate              EQU   3
+UIkScreenTherm                EQU   4
+
+UIkBufLen                     #EQU  10
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+UIsNewScreen      defSEM                              ;set when a new screen should be shown
+UIsShowPopup      defSEM                              ;TRUE is the popup display is pending
+
+;<DEF_BYTE>
+UIbScreenID       defBYTE                             ;ID of the screen to be shown
+UIbTextIdx        defBYTE                             ;shared index into UIabTextEntry
+UIbMaxText        defBYTE                             ;maximum nof chars to enter
+UIabTextEntry     defBYTE  UIkBufLen                  ;shared text entry buffer
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+_UIsubInitialise:
+   GoSub          UIsubInitialise
+   LaunchTask     taskUI
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This is the main UI task.  Changing to a new screen involves a task loading
+; UIbScreenID with the screen ID then setting the UIsNewScreen semaphore.  The
+; current screen must jump to UIDoNewScreen when it sees the signalled
+; semaphore.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+taskUI:
+   GoSub          UIsubScreenShowIdle                 ;start with the idle screen
+UIDoNewScreen:                                        ;an existing screen must jump here when it sees sNewScreen is set
+   GoSubIfST      UIsShowPopup,UIPOPsubRunPopup
+   #HMI           Reset( b:HUEkBlack )
+   ClrS           UIsNewScreen
+
+   BranchM        UIbScreenID
+   Target         UIscreenIdle
+   Target         UIscreenMenu
+   Target         UIscreenSetTime
+   Target         UIscreenSetDate
+   Target         UIscreenTherm
+
+
+;===============================================================================
+;DESCRIPTION:
+; This subroutine is called to request a new screen be shown.
+;PARAMETERS:
+;  -> X: New screen ID
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubSetScreen:
+   Store          UIbScreenID
+   SetS           UIsNewScreen
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubDrawHeading:
+   #HMI           SetFont( "prop25.fon" )
+   #HMI           SetColours( f:HUEkLightestGrey, b:HUEkDarkGrey )
+   #HMI           SetBounds( x:0px, y:0px, w:100%, h:1 )
+   #HMI           Cls()
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; As a demo, beep if the backlight switches off.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubBacklightEvent:
+   RetIfT                                             ;nothing to do if backlight back at mid or full levels
+   KBeep
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Following calibration, redraw the idle screen.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubRedrawAfterCal:
+   LoadX          UIkScreenIdle
+   Goto           UIsubSetScreen
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+

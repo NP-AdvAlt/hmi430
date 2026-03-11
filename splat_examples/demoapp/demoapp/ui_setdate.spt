@@ -1,0 +1,406 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; UI allows the user to set the date.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Called by any task to request display of this screen.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubScreenShowSetDate:
+   LoadX          UIkScreenSetDate
+   Goto           UIsubSetScreen
+
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+UIscreenSetDate:
+   SetMem         UIbMaxText,2
+   GoSub          UINEsubClearBuffer
+
+   #HMI           Reset( b:HUEkLightestGrey )
+
+   GoSub          UIsubDrawHeading
+   #HMI           Print( "\CEnter Date" )
+   #HMI           SetBounds()
+   #HMI           SetColours( f:HUEkDarkGrey, b:HUEkTransparent )
+
+   ;buttons for selecting day/month/year
+   #HMI           SetFont( "prop35.fon" )
+   #HMI           ButtonEvent2( id:20, x:4px,   y:80px,  w:170px, h:54px, m:"p1g0", rb:HUEkLightGrey, pb:HUEkWhite, ev:UISDsubShowDayKeys )
+   #HMI           ButtonEvent2( id:21, x:4px,   y:135px, w:170px, h:54px, m:"g0",  rb:HUEkLightGrey, pb:HUEkWhite, ev:UISDsubShowMonthKeys )
+   #HMI           SetFont( "prop70.fon" )
+   #HMI           SetCursor( x:4px, y:240px )
+   #HMI           Print( "20" )
+   #HMI           SetFont( "prop35.fon" )
+   #HMI           ButtonEvent2( id:22, x:80px,  y:190px, w:94px, h:54px, m:"g0",  rb:HUEkLightGrey, pb:HUEkWhite, ev:UISDsubShowYearKeys )
+
+   #HMI           SetColours( f:HUEkDarkGrey, b:HUEkWhite )
+   #HMI           SetFont( "prop35.fon" )
+   #HMI           ButtonEvent2( id:30, x:366px, y:60px,  w:108px, h:54px, t:"SAVE", ev:UISDsubBtnSave )
+   #HMI           ButtonEvent2( id:31, x:366px, y:115px, w:108px, h:54px, t:"CLR",  ev:UISDsubBtnClearDay )
+   #HMI           ButtonEvent2(        x:366px, y:170px, w:108px, h:54px, t:"QUIT", ev:UIsubScreenShowMenu )
+
+   LoadX          0
+   RTCPopHH
+   LoadX          0
+   RTCPopMM
+   LoadX          0
+   RTCPopSS
+   GoSub          UISDsubDisplayDate
+   GoSub          UISDsubShowDayKeys
+
+
+_UISDLoop
+   Pause          10
+   GoIfST         UIsNewScreen,UIDoNewScreen          ;jump if there's a new screen to display
+   Goto           _UISDLoop
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubShowDayKeys:
+   #HMI           ButtonEvent2( id:31, m:"h0d0", ev:UISDsubBtnClearDay )
+   GoSub          UINEsubClearBuffer
+   GoSub          UINEsubShowNumpad
+   LoadI          0
+_UISDDayKeysLoop
+   ClrInstCount
+   #HMI           ButtonEvent2( id:b(=i), ev:UISTsubBtnDayEntry )
+   IncI
+   ItoX
+   GoIfXle        9,_UISDDayKeysLoop
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubShowMonthKeys:
+   #HMI           ButtonEvent2( id:31, m:"h1d1" )
+   #HMI           SetColours( f:HUEkDarkGrey, b:HUEkWhite )
+   #HMI           SetFont( "prop25.fon" )
+   GoSub          UINEsubEraseNumButtons
+   #HMI           ButtonEvent2( id:1,  x:190px, y:35px,  w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 1 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:2,  x:245px, y:35px,  w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 2 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:3,  x:300px, y:35px,  w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 3 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:4,  x:190px, y:90px,  w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 4 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:5,  x:245px, y:90px,  w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 5 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:6,  x:300px, y:90px,  w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 6 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:7,  x:190px, y:145px, w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 7 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:8,  x:245px, y:145px, w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 8 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:9,  x:300px, y:145px, w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 9 ) ),  pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:10, x:190px, y:200px, w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 10 ) ), pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:11, x:245px, y:200px, w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 11 ) ), pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:12, x:300px, y:200px, w:54px, h:54px, m:"g1", t:( nz( UIIpMon, 12 ) ), pf:HUEkLightestGrey, ev:UISTsubBtnMonEntry )
+   RTCPushMM
+   Push
+   RetIfZ                                             ;nothing to do if there's no month selected
+   #HMI           ButtonEvent2( id:b(=x), m:"p1" )     ;otherwise, activate the button for the selected month
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubShowYearKeys:
+   #HMI           ButtonEvent2( id:31, m:"h0d0", ev:UISDsubBtnClearYear )
+   GoSub          UINEsubClearBuffer
+   GoSub          UINEsubShowNumpad
+   LoadI          0
+_UISDYearKeysLoop
+   ClrInstCount
+   #HMI           ButtonEvent2( id:b(=i), ev:UISTsubBtnYearEntry )
+   IncI
+   ItoX
+   GoIfXle        9,_UISDYearKeysLoop
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubDisplayDate:
+   ClrInstCount
+   #HMI           SetFont( "prop35.fon" )
+   #HMI           SetColours( f:HUEkDarkGrey, b:HUEkTransparent )
+   #HMI           SetBounds( x:0px, b:70px, w:180px, h:1 )
+   #HMI           Cls()
+   RTCPushSS
+   GoIfz          _UISDNoDOWDisp
+   RTCPushMM
+   GoIfz          _UISDNoDOWDisp
+   RTCPushHH
+   GoIfz          _UISDNoDOWDisp
+   RTCPushDN
+   #HMI           Print( "\C", nz( UIIpDOW, =x ) )
+   #HMI           ButtonEvent2( id:30, m:"d0h0" )
+   Goto           _UISDEndDOWDisp
+_UISDNoDOWDisp
+   #HMI           ButtonEvent2( id:30, m:"d1a30%" )
+_UISDEndDOWDisp
+   #HMI           SetBounds()
+
+   #HMI           SetColours( f:HUEkDarkGrey, b:HUEkWhite )
+   RTCPushSS
+   Push
+   GoIfz          _UISDNoDay
+   #HMI           ButtonEvent2( id:20, t:( b(=x) ) )
+   Goto           _UISDEndDayDisp
+_UISDNoDay
+   #HMI           ButtonEvent2( id:20, t:"Day?" )
+_UISDEndDayDisp
+
+   ClrInstCount
+   RTCPushMM
+   Push
+   GoIfz          _UISDNoMon
+   #HMI           ButtonEvent2( id:21, t:( nz(UIIpMon,=x), "(", b(=x), ")" ) )
+   Goto           _UISDEndMonDisp
+_UISDNoMon
+   #HMI           ButtonEvent2( id:21, t:"Month?" )
+_UISDEndMonDisp
+
+   RTCPushHH
+   Push
+   GoIfz          _UISDNoYear
+   #HMI           ButtonEvent2( id:22, t:( b(=x,2) ) )
+   Return
+_UISDNoYear
+   #HMI           ButtonEvent2( id:22, t:( "Year?" ) )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubBtnSave:
+   RTCWriteDate
+   GoSub          UIPOPsubDrawPopup
+   #HMI           SetCursor( x:0, y:C-1 )
+   #HMI           Print( "\CNew date has\nbeen saved." )
+   Goto           UIsubScreenShowMenu
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubBtnClearDay:
+   GoSub          UINEsubClearBuffer
+   LoadX          0
+   RTCPopSS
+   Goto           UISDsubDisplayDate
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubBtnClearYear:
+   GoSub          UINEsubClearBuffer
+   LoadX          0
+   RTCPopHH
+   Goto           UISDsubDisplayDate
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubBtnDayEntry:
+   GoSub          UINEsubBtnNumEntry                  ;go buffer the number
+   GoSub          UISTsubGetTime                      ;use the time routine to get the number (the hours will be for us)
+   Recall         bScratchA                           ;pop the new..
+   RTCPopSS                                           ;..day into the RTC register
+   RTCWriteDN                                         ;update the DOW
+   Goto           UISDsubDisplayDate                  ;go display it
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubBtnMonEntry:
+   GoSub          UIsubGetButton
+   Pop
+   RTCPopMM
+   RTCWriteDN                                         ;update the DOW
+   Goto           UISDsubDisplayDate                  ;go display it
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubBtnYearEntry:
+   GoSub          UINEsubBtnNumEntry                  ;go buffer the number
+   GoSub          UISTsubGetTime                      ;use the time routine to get the number (the hours will be for us)
+   Recall         bScratchA                           ;pop the new..
+   RTCPopHH                                           ;..year into the RTC register
+   RTCWriteDN                                         ;update the DOW
+   Goto           UISDsubDisplayDate                  ;go display it
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+
+

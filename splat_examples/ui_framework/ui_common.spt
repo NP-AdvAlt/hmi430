@@ -1,0 +1,290 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Common stuff.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+;-- colours --
+HUEkTransparent   #EQU  '00000000
+HUEkNothing       #EQU  '00010101
+HUEkWhite         #EQU  'FFFFFFFF
+HUEkWhite10       #EQU  '19FFFFFF
+HUEkWhite20       #EQU  '33FFFFFF
+HUEkWhite33       #EQU  '55FFFFFF
+HUEkWhite50       #EQU  '80FFFFFF
+HUEkLightestGrey  #EQU  'FFE0E0E0
+HUEkLightGrey     #EQU  'FFC0C0C0
+HUEkGrey          #EQU  'FF909090
+HUEkDarkGrey      #EQU  'FF606060
+HUEkDarkDarkGrey  #EQU  'FF303030
+HUEkBlack         #EQU  'FF000000
+HUEkBlack10       #EQU  '19000000
+HUEkBlack20       #EQU  '33000000
+HUEkBlack50       #EQU  '80000000
+HUEkBlack70       #EQU  'B0000000
+HUEkBlack80       #EQU  'CC000000
+
+HUEkBlue          #EQU  'FF0000C0
+HUEkBlue33        #EQU  '550000FF
+HUEkDarkBlue      #EQU  'FF000070
+HUEkPaleGreen     #EQU  'FFA0FFA0
+HUEkGreen         #EQU  'FF00FF00
+HUEkGreen50       #EQU  '8000FF00
+HUEkMedGreen      #EQU  'FF009000
+HUEkDarkGreen     #EQU  'FF007000
+HUEkDarkDarkGreen #EQU  'FF003000
+HUEkOrange        #EQU  'FFFF8000
+HUEkPink          #EQU  'FFFF00FF
+HUEkPurple        #EQU  'FF9020C0
+HUEkRed           #EQU  'FFFF0000
+HUEkRed33         #EQU  '55FF0000
+HUEkRed50         #EQU  '80FF0000
+HUEkDarkRed       #EQU  'FF700000
+HUEkDarkDarkRed   #EQU  'FF300000
+HUEkMedRed        #EQU  'FF900000
+HUEkYellow        #EQU  'FFFFFF00
+HUEkYellow33      #EQU  '55FFFF00
+HUEkDarkYellow    #EQU  'FFA0A000
+HUEkDarkDarkYellow #EQU  'FF606000
+HUEkCyan          #EQU  'FF00E0D0
+HUEkMedCyan       #EQU  'FF00ACA8
+HUEkBtnDarkTrans  #EQU  '80202020
+HUEkBtnActive     #EQU  'FF00BCE4                     ;this is the blue that appears in pressed buttons
+
+HUEkForeground    #EQU  HUEkWhite
+HUEkBackground    #EQU  HUEkTransparent
+HUEkBtnNormRF     #EQU  HUEkWhite
+HUEkBtnNormRB     #EQU  HUEkWhite10
+HUEkBtnNormPF     #EQU  HUEkWhite
+HUEkBtnNormPB     #EQU  HUEkBtnActive
+HUEkBtnSlctRF     #EQU  HUEkBlack
+HUEkBtnSlctRB     #EQU  HUEkGrey
+HUEkBtnSlctPF     #EQU  HUEkBlack
+HUEkBtnSlctPB     #EQU  HUEkGreen
+
+;-- fonts
+;<=IF HMI430>FONTkPropNormText   #EQU  "propnormal.fon"
+;<=IF HMI430>FONTkPropBigText    #EQU  "prop35.fon"
+;<=IF HMI430>FONTkPropBigNum     #EQU  "prop70.fon"
+;<=IF HMI430>FONTkPropXBigNum    #EQU  "propbold70.fon"
+
+;<=IF HMI700>FONTkPropNormText    #EQU  "myriadproreg39.fon"
+;<=IF HMI700>FONTkPropBigText     #EQU  "myriadproreg60.fon"
+;<=IF HMI700>FONTkPropBigNum      #EQU  "myriadproreg135.fon"
+;<=IF HMI700>FONTkPropXBigNum     #EQU  "myriadproreg210.fon"
+
+;-- other
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+UIsShared0        defSEM
+UIsShared1        defSEM
+UIsShared2        defSEM
+
+;<DEF_BYTE>
+                  defBLOCK 13
+UIbShared0        defBYTE
+UIbShared1        defBYTE
+UIbShared2        defBYTE
+UIbShared3        defBYTE
+UIbShared4        defBYTE
+UIbShared5        defBYTE
+UIbShared6        defBYTE
+UIbShared7        defBYTE
+UIbShared8        defBYTE
+UIbShared9        defBYTE
+UIbShared10       defBYTE
+UIbShared11       defBYTE
+UIbShared12       defBYTE
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Called by the UI when a new screen is about to be shown.  Typically just calls
+; #HMI Reset() with either a colour or image.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubReset:
+   #HMI           Reset()
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Called by the UI when a new popup screen is about to be shown.  Typically just
+; calls #HMI Reset() with either a colour or image and sets the popup bounds.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubPopupReset:
+   #HMI           Reset( b:HUEkBlack70 )
+   #HMI           DrawImage( x:65px, y:25px, i:"popup.dif", z:1 )
+   #HMI           SetBounds( x:70px, y:35px, w:340px, h:202px )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Tidies up after drawing headings or buttons etc - removes bounds, sets default
+; font and colours.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubDrawDefaults:
+   #HMI           SetFont( f:FONTkPropNormText )
+   #HMI           SetColours( f:HUEkForeground, b:HUEkBackground )
+   #HMI           SetBounds()
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Subroutine sets defaults for buttons (font, colours)
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubDrawButtonDefaults:
+   #HMI           SetFont( FONTkPropNormText )
+   #HMI           SetColours( f:HUEkBtnNormRF, b:HUEkBtnNormRB )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Draws the title bar, the caller will then print the screen title.
+;PARAMETERS:
+;  -> nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubDrawHeading:
+   #HMI           SetFont( f:FONTkPropNormText )
+   #HMI           SetColours( f:HUEkWhite, b:HUEkDarkRed )
+   #HMI           SetBounds( x:0%, y:0%, w:100%, h:1.1 )
+   #HMI           Cls()
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Can do something when the backlight changes state.
+;PARAMETERS:
+;  -> x: backlight state
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubBacklightEvent:
+   GoIfXne        UIBLkOff,Return                     ;do nothing if the backlight hasn't turned off
+   Goto           UIsubScreenShowHome                 ;backlight is now off, so go back to the home screen
+
+
+;===============================================================================
+;DESCRIPTION:
+; Jumps to the idle screen following touchscreen re-calibration.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubRedrawAfterCal:
+   Goto           UIsubScreenShowHome
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+
+

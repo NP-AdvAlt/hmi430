@@ -1,0 +1,246 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; This is a simple "bounds" based slider for the SPLat HMI controllers.  Using
+; "bounds" allows solid colours to be used for the slider so png files aren't
+; required.  Naturally a slider using images looks much nicer and is actually
+; easier to implement, ref #HMI DrawImage().
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2015 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+HUEkTransparent   #EQU  '00000000
+HUEkDarkGrey      #EQU  'FF303030
+HUEkGreen         #EQU  'FF00D000
+HUEkWhite         #EQU  'FFFFFFFF
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- includes --
+
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+;--includes
+#include file( "hmi430_io.spt" )
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+bSlider           defBYTE
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+   LaunchTask     taskUI
+   RunTasksForever
+
+
+;===============================================================================
+;DESCRIPTION:
+; UI task sets up the screen, creating a hidden button to act on slider touches
+; and looping to display updated slider value.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+taskUI:
+   ;hidden button that will respond to slider touches
+   #HMI           ButtonEvent2( x:140px, y:210px, w:200px, h:20px, m:"h1r20", ev:subBtnSlider )
+   GoSub          subDispSlider                       ;go display the slider
+
+_Loop
+   ;--display the slider value
+   #HMI           SetColours( f:HUEkWhite, b:HUEkTransparent )
+   #HMI           SetCursor( x:C-2, y:100px )
+   #HMI           Print( b(*bSlider,f), "%" )
+
+   Pause          10                                  ;nothing to do for a while
+   Goto           _Loop                               ;go redisplay the slider value
+
+
+;===============================================================================
+;DESCRIPTION:
+; This subroutine is called whenever the slider is touched.  It redraws the
+; whole slider.
+;PARAMETERS:
+;  -> bSlider: slider position (0 - 100%)
+;RETURNS:
+; <-  nil
+;===============================================================================
+subDispSlider:
+   ;--clear
+   #HMI           SetBounds( x:140px, y:210px, w:200px, h:20px )
+   #HMI           SetColours( b:HUEkTransparent )
+   #HMI           Cls()
+   ;--draw the slider bar
+   #HMI           SetBounds( x:140px, y:218px, w:200px, h:5px )
+   #HMI           SetColours( b:HUEkDarkGrey )
+   #HMI           Cls()
+   Recall         bSlider
+   float
+   fWtoQ                                              ;convert from percentage..
+   fLoadW         100.0
+   fDiv                                               ;..to normalised (0.0 thru 1.0)
+   fLoadQ         190.0                               ;scale to the width..
+   fMul                                               ;..of the bar (less the width of the slider)
+   fLoadQ         140.0                               ;add the..
+   fAdd                                               ;..offset to the start of the bar
+   ;--now draw the slider
+   #HMI           SetBounds( x:(f(=w), "px"), y:210px, h:20px, w:10px )
+   #HMI           SetColours( b:HUEkGreen )
+   #HMI           Cls()
+   ;--tidy up
+   #HMI           SetBounds()
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This routine is called with updates to the touch position on the slider.  It
+; uses this information to calc the slider value (0 thru 100%), then calls the
+; routine to redisplay the slider.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+subBtnSlider:
+   GoSub          UIsubGetButton                      ;get extra button info
+   UtoQ           0                                   ;get the X coordinate
+   fLoadW         140.0                               ;remove the..
+   fSub                                               ;..offset to the start of the bar
+   fWtoQ                                              ;normalise
+   fLoadW         190.0
+   fDiv
+   fLoadQ         100.0                               ;convert to..
+   fMul                                               ;..percentage
+   fLoadQ         0.0                                 ;minimum limit
+   fGoIfWgeQ      _ChkHighLimit
+   fSwap                                              ;use the minimum
+_ChkHighLimit
+   fLoadQ         100.0                               ;maximum limit
+   fGoIfWleQ      _SaveSlide
+   fSwap                                              ;use the maximum
+_SaveSlide
+   fix
+   Store          bSlider
+   GoSub          subDispSlider
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Stubs, required by ui_utils.spt
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubRedrawAfterCal
+UIsubBacklightEvent
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Utility file includes
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+#include file( "ui_utils.spt" )
+#include file( "utils.spt" )
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+
+

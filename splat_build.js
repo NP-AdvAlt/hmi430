@@ -12,6 +12,8 @@ const { execFileSync } = require('child_process');
 
 const SPLAT_EXE = (() => {
     const candidates = [
+        path.join('C:', 'Splat', 'dash-application', 'resources', 'app', 'plugins',
+            'splat-controls.splat-vscode', 'dist', 'bin', 'splat.exe'),
         path.join('C:', 'Claude', 'dash-application', 'resources', 'app', 'plugins',
             'splat-controls.splat-vscode', 'dist', 'bin', 'splat.exe'),
         path.join(process.env.LOCALAPPDATA || '',

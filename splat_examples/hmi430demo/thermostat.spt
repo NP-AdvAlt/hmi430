@@ -1,0 +1,312 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Thermostat task
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+      GoSub       _THERMsubInit                         	;initialise the task at power on
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+THERMfTemperatureFilt   defFLOAT                      ;precise filtered temperature (internal use)
+THERMfTemperature       defFLOAT                      ;displayable temperature, jitter free, resolution of 0.1°C
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Returns the temperature or an error value if the sensor is missing
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Temperature in currently selected units, or -999.9 if sensor faulty.
+;===============================================================================
+THERMsubGetTemperature:
+   fRecallW       THERMfTemperature
+   fLoadQ         -30.0
+   fGoIfWleQ      _THERMSensorFault
+   fLoadQ         100.0
+   fGoIfWgeQ      _THERMSensorFault
+   GoIfSF         PMsFlagsFarenheit,PMbFlags,Return
+   GoSub          THERMsubCtoF
+   Return
+_THERMSensorFault
+   fLoadW         -999.9
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; °C = (°F - 32) x 5/9
+;PARAMETERS:
+;  -> W: Farenheit
+;RETURNS:
+; <-  W: Celcius
+;===============================================================================
+THERMsubFtoC:
+   fLoadQ         -32.0
+   fAdd
+   fLoadQ         5.0
+   fMul
+   fWtoQ
+   fLoadW         9.0
+   fDiv
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; °F = °C x 9/5 + 32
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+THERMsubCtoF:
+   fLoadQ         9.0
+   fMul
+   fWtoQ
+   fLoadW         5.0
+   fDiv
+   fLoadQ         32.0
+   fAdd
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Called at power-on and whenever the temperature trip point is changed to
+; ensure it stays within reasonable limits
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+THERMsubApplyLimits:
+   fRecallW       PMfTemperatureTrip
+   GoIfST         PMsFlagsFarenheit,PMbFlags,_THERMChkFarenheit
+   fLoadQ         10.0
+   fGoIfWltQ      _THERMSetTherm
+   fLoadQ         40.0
+   fGoIfWgtQ      _THERMSetTherm
+   Return
+
+_THERMChkFarenheit
+   fLoadQ         50.0
+   fGoIfWltQ      _THERMSetTherm
+   fLoadQ         122.0
+   fGoIfWgtQ      _THERMSetTherm
+   Return
+
+_THERMSetTherm
+   fSwap
+   fStore         PMfTemperatureTrip
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This routine is called at power-on to initialise the task.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_THERMsubInit:
+   LaunchTask     _THERMtask
+   LaunchTask     _THERMtaskTemperature
+   GoSub          THERMsubApplyLimits
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This task continually measures and filters (smooths) the temperature.  It also
+; figures the "displayable" temperature, a jitter free value.
+;===============================================================================
+_THERMtaskTemperature:
+   GoSub          _THERMsubReadRawTemp                ;take an use a raw..
+   fStore         THERMfTemperatureFilt               ;..reading at power-on
+_THERMTempLoop
+   Pause          5
+   fRecallW       THERMfTemperatureFilt               ;use 9/10ths of the current filtered value
+   fLoadQ         0.9
+   fMul
+   fStore         THERMfTemperatureFilt
+   GoSub          _THERMsubReadRawTemp                ;and 1/10th of the new reading
+   fLoadQ         0.1
+   fMul
+   fRecallQ       THERMfTemperatureFilt
+   fAdd
+   fStore         THERMfTemperatureFilt
+   fRecallQ       THERMfTemperature                   ;is the latest temperature..
+   fSub
+   fAbs
+   fLoadQ         0.1                                 ;..less than 0.1° different?
+   fGoIfWltQ      _THERMTempLoop                      ;it's less, so nothing else to do
+   fRecallW       THERMfTemperatureFilt
+   fLoadQ         10.0                                ;nearest..
+   fMul
+   fLoadQ         -0.5
+   fGoIfNeg       _THERMDoRounding
+   fLoadQ         0.5
+_THERMDoRounding
+   fAdd
+   fWtoQ
+   fLoadW         1.0
+   GoSub          fIntDiv
+   fLoadQ         0.1
+   fMul                                               ;..0.1 °
+   fStore         THERMfTemperature
+   Goto           _THERMTempLoop
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_THERMsubReadRawTemp:
+   fAnIn          aiThermistor
+   #Thermistor    Params(10000, 3970) Feed(3.3, 3.3, 5765) RangeC(-25, 80) Order( 5 )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Monitors the temperature and controls the fan and relay if they're set to auto
+;===============================================================================
+_THERMtask:
+	Pause          10
+	GoSub          THERMsubGetTemperature
+	fWtoQ
+	fRecallW       PMfTemperatureTrip
+	fSub
+	fLoadQ         0.1
+	fGoIfWgeQ      _THERMHigh
+	fLoadQ         -0.1
+	fGoIfWleQ      _THERMLow
+	Goto           _THERMtask
+
+_THERMHigh
+   GoIfSF         PMsFlagsFanAuto,PMbFlags,_THERMSkipFanOn
+   On             oFan
+_THERMSkipFanOn
+   GoIfSF         PMsFlagsRelayAuto,PMbFlags,_THERMSkipRelayOn
+   On             oRelay
+_THERMSkipRelayOn
+	Goto				_THERMtask
+
+
+_THERMLow
+   GoIfSF         PMsFlagsFanAuto,PMbFlags,_THERMSkipFanOff
+   Off            oFan
+_THERMSkipFanOff
+   GoIfSF         PMsFlagsRelayAuto,PMbFlags,_THERMSkipRelayOff
+   Off            oRelay
+_THERMSkipRelayOff
+	Goto				_THERMtask
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+
+

@@ -1,0 +1,523 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; UI allows the user to set the date.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+_UISDsMonKeys     #EQU  UIsShared0
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Called by any task to request display of this screen.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubScreenShowSetDate:
+   LoadX          UIkScreenSetDate
+   Goto           UIsubSetScreen
+
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+UIscreenSetDate:
+   GoSub          UIsubDrawHeading
+   #HMI           Print( "\CSet Date" )
+   #HMI           SetBounds()
+   YieldTask
+
+   ;buttons for selecting day/month/year
+   GoSub          UIsubDrawButtonDefaults
+   #HMI           ButtonEvent2( id:20, x:2%,   y:20%, w:28%, h:24.5%, m:"p1g0", pb:HUEkWhite33, ev:UISDsubShowDayKeys )
+   #HMI           ButtonEvent2( id:21, x:2%,   y:45%, w:28%, h:24.5%, m:"g0",   pb:HUEkWhite33, ev:UISDsubShowMonthKeys )
+   #HMI           ButtonEvent2( id:22, x:12%,  y:70%, w:18%, h:24.5%, m:"g0",   pb:HUEkWhite33, ev:UISDsubShowYearKeys )
+   YieldTask
+   #HMI           SetColours( f:HUEkWhite, b:HUEkTransparent )
+   #HMI           SetFont( FONTkPropNormText )
+   #HMI           SetBounds( x:2%, y:70%, w:9.7%, h:24.5% )
+   #HMI           Cls()
+   #HMI           SetCursor( y:c-0.5 )
+   #HMI           Print( "\C20" )
+   #HMI           SetBounds()
+
+   GoSub          UIsubDrawButtonDefaults
+   #HMI           ButtonEvent2( id:30, x:80%, y:10%, w:20%, h:29.5%, t:"Save", m:"h1d1",        ev:UISDsubBtnSave )
+   #HMI           ButtonEvent2( id:31, x:80%, y:40%, w:20%, h:29.5%, t:"Clear",                 ev:UISDsubBtnClearDay )
+   #HMI           ButtonEvent2(        x:80%, y:70%, w:20%, h:29.5%, t:"Exit",                  ev:UIsubScreenShowMenu )
+   YieldTask
+
+
+   LoadX          0
+   RTCPopHH
+   LoadX          0
+   RTCPopMM
+   LoadX          0
+   RTCPopSS
+   GoSub          UISDsubDisplayDate
+   SetS           _UISDsMonKeys                       ;force keypad display
+   GoSub          UISDsubShowDayKeys
+
+
+_UISDLoop
+   Pause          10
+   GoIfST         UIsNewScreen,UIDoNewScreen          ;jump if there's a new screen to display
+   Goto           _UISDLoop
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubShowDayKeys:
+   GoSub          UIsubDrawButtonDefaults
+   #HMI           ButtonEvent2( id:31, m:"h0d0", ev:UISDsubBtnClearDay )
+   GoSub          UISDsubShowNumKeys
+   GoSub          UISTsubBtnDayEntry                  ;register the callback
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubShowMonthKeys:
+   RetIfST        _UISDsMonKeys
+   #HMI           ButtonEvent2( id:31, m:"h1d1" )
+   #HMI           FreezeScreen( 1 )
+   SetS           _UISDsMonKeys
+   GoSub          UIsubDrawButtonDefaults
+   LoadX          0
+   NVSetPtr       UIpDateTimePos
+   GoSub          NEsubShowNumpad
+   ;--hijack the numpad, make it display months & group the buttons
+   #HMI           ButtonEvent2( id:0,  v:1,  m:"g1", t:"Jan", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:1,  v:2,  m:"g1", t:"Feb", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:2,  v:3,  m:"g1", t:"Mar", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:3,  v:4,  m:"g1", t:"Apr", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:4,  v:5,  m:"g1", t:"May", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:5,  v:6,  m:"g1", t:"Jun", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:6,  v:7,  m:"g1", t:"Jul", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:7,  v:8,  m:"g1", t:"Aug", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:8,  v:9,  m:"g1", t:"Sep", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:9,  v:10, m:"g1", t:"Oct", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:10, v:11, m:"g1", t:"Nov", ev:UISTsubBtnMonEntry )
+   #HMI           ButtonEvent2( id:11, v:12, m:"g1", t:"Dec", ev:UISTsubBtnMonEntry )
+   #HMI           FreezeScreen( 0 )
+   RTCPushMM
+   YieldTask
+   Push
+   RetIfZ                                              ;nothing to do if there's no month selected
+   DecX
+   #HMI           ButtonEvent2( id:b(=x), m:"p1" )     ;otherwise, activate the button for the selected month
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubShowYearKeys:
+   #HMI           ButtonEvent2( id:31, m:"h0d0", ev:UISDsubBtnClearYear )
+   GoSub          UIsubDrawButtonDefaults
+   GoSub          UISDsubShowNumKeys
+   GoSub          UISTsubBtnYearEntry                 ;register the callback
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubShowNumKeys:
+   GoSub          NEsubClearBuffer
+   RetIfSF        _UISDsMonKeys
+   ClrS           _UISDsMonKeys
+   LoadX          2
+   NVSetPtr       UIpDateTimePos
+   GoSub          NEsubShowNumpad
+   #HMI           ButtonEvent2( id:9,  w:0 )          ;remove "."
+   #HMI           ButtonEvent2( id:11, w:0 )          ;remove "-"
+   YieldTask
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubDisplayDate:
+   ClrInstCount
+   ;--display the dow if we can
+   #HMI           SetFont( FONTkPropNormText )
+   #HMI           SetColours( f:HUEkWhite, b:HUEkWhite15 )
+   #HMI           SetBounds( x:2%, y:10%, w:28%, h:9% )
+   #HMI           Cls()
+   #HMI           SetCursor( y:c-0.5 )
+   RTCPushSS
+   GoIfz          _UISDNoDOWDisp
+   RTCPushMM
+   GoIfz          _UISDNoDOWDisp
+   RTCPushHH
+   GoIfz          _UISDNoDOWDisp
+   RTCPushDN
+   #HMI           Print( "\C", nz( NVpDayOfWeek, =x ) )
+   #HMI           ButtonEvent2( id:30, m:"d0h0" )
+   Goto           _UISDEndDOWDisp
+_UISDNoDOWDisp
+   #HMI           ButtonEvent2( id:30, m:"d1a30%" )
+_UISDEndDOWDisp
+   #HMI           SetBounds()
+
+   ;--update the text in the day button
+   RTCPushSS
+   Push
+   GoIfz          _UISDNoDay
+   #HMI           ButtonEvent2( id:20, t:( b(=x) ) )
+   Goto           _UISDEndDayDisp
+_UISDNoDay
+   #HMI           ButtonEvent2( id:20, t:"Day?" )
+_UISDEndDayDisp
+
+   ;--update the text in the month button
+   ClrInstCount
+   RTCPushMM
+   Push
+   GoIfz          _UISDNoMon
+   #HMI           ButtonEvent2( id:21, t:( nz( NVpMon, =x ), "(", b(=x), ")" ) )
+   Goto           _UISDEndMonDisp
+_UISDNoMon
+   #HMI           ButtonEvent2( id:21, t:"Month?" )
+_UISDEndMonDisp
+
+   ;--update the text in the year button
+   RTCPushHH
+   Push
+   GoIfz          _UISDNoYear
+   #HMI           ButtonEvent2( id:22, t:( b(=x,2) ) )
+   Return
+_UISDNoYear
+   #HMI           ButtonEvent2( id:22, t:"Year?" )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubBtnSave:
+   RTCWriteDate
+   Goto           UIsubScreenShowMenu
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubBtnClearDay:
+   GoSub          NEsubClearBuffer
+   LoadX          0
+   RTCPopSS
+   Goto           UISDsubDisplayDate
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISDsubBtnClearYear:
+   GoSub          NEsubClearBuffer
+   LoadX          0
+   RTCPopHH
+   Goto           UISDsubDisplayDate
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubBtnDayEntry:
+   Suspend        NEwBtnDispCB                        ;register this callback
+   GoSub          UISTsubGetTime                      ;use the time routine to get the number (the hours will be for us)
+   Recall         bScratchA                           ;pop the new..
+   RTCPopSS                                           ;..day into the RTC register
+   RTCWriteDN                                         ;update the DOW
+   Goto           UISDsubDisplayDate                  ;go display it
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubBtnMonEntry:
+   GoSub          UIsubGetButton
+   fix
+   RTCPopMM
+   RTCWriteDN                                         ;update the DOW
+   Goto           UISDsubDisplayDate                  ;go display it
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubBtnYearEntry:
+   Suspend        NEwBtnDispCB                        ;register this callback
+   GoSub          UISTsubGetTime                      ;use the time routine to get the number (the hours will be for us)
+   Recall         bScratchA                           ;pop the new..
+   RTCPopHH                                           ;..year into the RTC register
+   RTCWriteDN                                         ;update the DOW
+   Goto           UISDsubDisplayDate                  ;go display it
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+   ;dummy byte, ensures no NVptr is at address 0 (for routines that check for a NULL ptr)
+   NV0Byte        255
+
+UIpDateTimePos
+   NV0fNum  34.8     ;XStart (%)
+   NV0fNum  10.0     ;YStart (%)
+   NV0fNum  15.0     ;XStep (%)
+   NV0fNum  22.5     ;YStep (%)
+   NV0fNum  14.8     ;Width (%)
+   NV0fNum  22.0     ;Height (%)
+
+ENGpMonday              NV0Byte  "Monday",0
+ENGpTuesday             NV0Byte  "Tuesday",0
+ENGpWednesday           NV0Byte  "Wednesday",0
+ENGpThursday            NV0Byte  "Thursday",0
+ENGpFriday              NV0Byte  "Friday",0
+ENGpSaturday            NV0Byte  "Saturday",0
+ENGpSunday              NV0Byte  "Sunday",0
+NVpDayOfWeek
+   NV0Ptr   ENGpMonday      
+   NV0Ptr   ENGpTuesday     
+   NV0Ptr   ENGpWednesday   
+   NV0Ptr   ENGpThursday    
+   NV0Ptr   ENGpFriday      
+   NV0Ptr   ENGpSaturday    
+   NV0Ptr   ENGpSunday      
+
+ENGpMon3                NV0Byte  "Mon",0
+ENGpTue3                NV0Byte  "Tue",0
+ENGpWed3                NV0Byte  "Wed",0
+ENGpThu3                NV0Byte  "Thu",0
+ENGpFri3                NV0Byte  "Fri",0
+ENGpSat3                NV0Byte  "Sat",0
+ENGpSun3                NV0Byte  "Sun",0
+NVpDOW
+   NV0Ptr   ENGpMon3
+   NV0Ptr   ENGpTue3
+   NV0Ptr   ENGpWed3
+   NV0Ptr   ENGpThu3
+   NV0Ptr   ENGpFri3
+   NV0Ptr   ENGpSat3
+   NV0Ptr   ENGpSun3
+
+ENGpDummy               NV0Byte  "?",0
+ENGpJanuary             NV0Byte  "January",0
+ENGpFebruary            NV0Byte  "February",0
+ENGpMarch               NV0Byte  "March",0
+ENGpApril               NV0Byte  "April",0
+ENGpMay                 NV0Byte  "May",0
+ENGpJune                NV0Byte  "June",0
+ENGpJuly                NV0Byte  "July",0
+ENGpAugust              NV0Byte  "August",0
+ENGpSeptember           NV0Byte  "September",0
+ENGpOctober             NV0Byte  "October",0
+ENGpNovember            NV0Byte  "November",0
+ENGpDecember            NV0Byte  "December",0
+NVpMonth
+   NV0Ptr   ENGpDummy                                 ; 0 isn't used, months start at 1
+   NV0Ptr   ENGpJanuary        
+   NV0Ptr   ENGpFebruary       
+   NV0Ptr   ENGpMarch          
+   NV0Ptr   ENGpApril          
+   NV0Ptr   ENGpMay            
+   NV0Ptr   ENGpJune           
+   NV0Ptr   ENGpJuly           
+   NV0Ptr   ENGpAugust         
+   NV0Ptr   ENGpSeptember      
+   NV0Ptr   ENGpOctober        
+   NV0Ptr   ENGpNovember       
+   NV0Ptr   ENGpDecember       
+
+ENGpJan3  NV0Byte  "Jan",0
+ENGpFeb3  NV0Byte  "Feb",0
+ENGpMar3  NV0Byte  "Mar",0
+ENGpApr3  NV0Byte  "Apr",0
+ENGpMay3  NV0Byte  "May",0
+ENGpJun3  NV0Byte  "Jun",0
+ENGpJul3  NV0Byte  "Jul",0
+ENGpAug3  NV0Byte  "Aug",0
+ENGpSep3  NV0Byte  "Sep",0
+ENGpOct3  NV0Byte  "Oct",0
+ENGpNov3  NV0Byte  "Nov",0
+ENGpDec3  NV0Byte  "Dec",0
+
+NVpMon
+   NV0Ptr   ENGpDummy                                 ; 0 isn't used, months start at 1
+   NV0Ptr   ENGpJan3
+   NV0Ptr   ENGpFeb3
+   NV0Ptr   ENGpMar3
+   NV0Ptr   ENGpApr3
+   NV0Ptr   ENGpMay3
+   NV0Ptr   ENGpJun3
+   NV0Ptr   ENGpJul3
+   NV0Ptr   ENGpAug3
+   NV0Ptr   ENGpSep3
+   NV0Ptr   ENGpOct3
+   NV0Ptr   ENGpNov3
+   NV0Ptr   ENGpDec3
+
+

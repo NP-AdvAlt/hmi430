@@ -1,0 +1,26 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;                            http://www.splatco.com                            ;
+;===============================================================================
+;PURPOSE:
+; Configuration values
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2016 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+CFGkVersion       #EQU  0.00                          ;application version number
+
+

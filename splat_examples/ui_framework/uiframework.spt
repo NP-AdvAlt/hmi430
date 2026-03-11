@@ -1,0 +1,205 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;                            http://www.splatco.com                            ;
+;===============================================================================
+;PURPOSE:
+; Core UI screen switcher.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+   GoSub          _UIsubInitialise
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+;-- screen ID's (these must match the order in the BRANCH below)
+;refer to the project specific ui file
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs
+
+;-- digital outputs
+
+;-- analogue inputs
+
+;-- analogue outputs
+
+;-- serial ports
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+UIsNewScreen      defSEM                              ;set when a new screen should be shown
+UIsShowPopup      defSEM                              ;TRUE if a new screen is a popup
+UIsIsPopup        defSEM                              ;TRUE if the current screen is a popup (don't remember it as a previous)
+
+;<DEF_BYTE>
+UIbScreenID       defBYTE                             ;ID of the screen to be shown
+UIbPrevScreenID0  defBYTE                             ;ID of the previous screen
+UIbPrevScreenID1  defBYTE                             ;ID of the previous previous screen
+UIbPrevScreenID2  defBYTE                             ;ID of the previous previous screen
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Called at power on to start the UI task.
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+_UIsubInitialise:
+   LaunchTask     taskUI
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This is the main UI task.  Changing to a new screen involves a task loading
+; UIbScreenID with the screen ID then setting the UIsNewScreen semaphore.  The
+; current screen must jump to UIDoNewScreen when it sees the signalled
+; semaphore.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+taskUI:
+
+UIDoNewScreen:
+   ;an existing screen must jump here when it sees UIsNewScreen is set
+   YieldTask
+   ClrS           UIsNewScreen
+   GoIfST         UIsIsPopup,_UIPopupReset
+   GoSub          UIsubReset
+   Goto           _UIBranchTarget
+_UIPopupReset
+   GoSub          UIsubPopupReset
+   Goto           _UIBranchTarget                     ;go run the new screen
+
+
+;===============================================================================
+;DESCRIPTION:
+; This subroutine is called to request a new screen be shown.
+;PARAMETERS:
+;  -> X: New screen ID
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubSetScreen:
+   GoIfST         UIsIsPopup,_UIDontRemember          ;don't remember if this screen is a popup
+   Recall         UIbPrevScreenID1                    ;stack the..
+   Store          UIbPrevScreenID2                    ;..previous screen
+   Recall         UIbPrevScreenID0                    ;stack the..
+   Store          UIbPrevScreenID1                    ;..previous screen
+   Recall         UIbScreenID                         ;save current as the..
+   Store          UIbPrevScreenID0                    ;..previous screen
+_UIDontRemember
+   Store          UIbScreenID                         ;set the new screen
+   SetS           UIsNewScreen                        ;flag new screen pending
+   RecallS        UIsShowPopup
+   StoreS         UIsIsPopup
+   ClrS           UIsShowPopup
+   Return
+
+
+
+;===============================================================================
+;DESCRIPTION:
+; This subroutine is called to request the previous screen be shown.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubSetScreenPrevious:
+   Recall         UIbPrevScreenID0
+   Store          UIbScreenID
+   Recall         UIbPrevScreenID1
+   Store          UIbPrevScreenID0
+   Recall         UIbPrevScreenID2
+   Store          UIbPrevScreenID1
+   SetS           UIsNewScreen
+   ClrS           UIsIsPopup
+   Return
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+

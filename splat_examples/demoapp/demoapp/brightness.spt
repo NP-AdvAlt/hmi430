@@ -1,0 +1,227 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Controls the LCD brightness based on readings from the LDR
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+      GoSub       _BRsubInit                         	;initialise the task at power on
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+BRkTimer          EQU   0
+BRkAmbient        EQU   1
+BRkLow            EQU   2
+BRkHigh           EQU   3
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+BRfLDRValue       defFLOAT
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+BRsubToggleBacklight:
+   IncM           PMbBacklight
+   GoIfMle        PMbBacklight,BRkHigh,_BRSave
+   SetMem         PMbBacklight,0
+_BRSave
+   PermStore
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This routine is called at power-on to initialise the task.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_BRsubInit:
+   LaunchTask     _BRtaskSampling
+   LaunchTask     _BRtaskControl
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Samples and smooths the LDR.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_BRtaskSampling:
+   Pause          2
+   fRecallW       BRfLDRValue
+   fLoadQ         0.9
+   fMul
+   fStore         BRfLDRValue
+   fAnIn          aiLDR
+   fLoadQ         0.1
+   fMul
+   fRecallQ       BRfLDRValue
+   fAdd
+   fStore         BRfLDRValue
+   Goto           _BRtaskSampling
+
+
+;===============================================================================
+;DESCRIPTION:
+; Controls the backlight.  Either uses the LDR reading where a low LDR means the
+; room is bright.  Or sets the timer or a fixed level.
+;===============================================================================
+_BRtaskControl:
+   BranchM        PMbBacklight
+   Target         _BRTimer
+   Target         _BRAmbient
+   Target         _BRLow
+   Target         _BRHigh
+
+_BRTimer
+   #HMI           SetBacklight( h:1.0, m:0.35, md:120, od:600 )
+   Goto           _BRWafChange
+
+_BRLow
+   #HMI           SetBacklight( h:0.1, md:0, od:0 )
+   Goto           _BRWafChange
+
+_BRHigh
+   #HMI           SetBacklight( h:1.0, md:0, od:0 )
+   Goto           _BRWafChange
+
+_BRWafChange
+   Recall         PMbBacklight
+_BRWafChangeLoop
+	Pause          20
+	Push
+   Recall         PMbBacklight
+   Compare
+   GoIfz          _BRWafChangeLoop
+   Goto           _BRtaskControl
+
+_BRAmbient
+   GoIfMne        PMbBacklight,BRkAmbient,_BRtaskControl
+	Pause          20
+	fRecallW       BRfLDRValue
+	fLoadQ         1.0                                 ;invert, so..
+	fSub                                               ;..0 means dark
+	fLoadQ         0.7
+	fMul
+	fLoadQ         0.3
+	fAdd
+	#HMI           SetBacklight( h:f(=w,4,2), md:0, od:0 )
+	Goto				_BRAmbient
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+_BRpTimer         NV0Byte  "Timer",0
+_BRpAmbient       NV0Byte  "Ambient",0
+_BRpLow           NV0Byte  "Low",0
+_BRpHigh          NV0Byte  "High",0
+
+BRpMode
+   NV0Ptr   _BRpTimer
+   NV0Ptr   _BRpAmbient
+   NV0Ptr   _BRpLow
+   NV0Ptr   _BRpHigh
+

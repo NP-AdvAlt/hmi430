@@ -5,8 +5,8 @@
 # after each press (before moving to the next button).
 #
 # Z strategy:
-#   Z=0   : full retract — required when moving outside screen area
-#   Z=-4  : hover        — used between buttons (all within screen area)
+#   Z=0   : full retract -- required when moving outside screen area
+#   Z=-4  : hover        -- used between buttons (all within screen area)
 #   Z=-14 : touch depth
 #
 # Does NOT call $H. Machine must already be homed to 0,0,0.
@@ -31,8 +31,8 @@ New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 # ---------------------------------------------------------------------------
 # Calibration constants (confirmed: yOrigin=-81 from offset_scan)
 # ---------------------------------------------------------------------------
-$xOrigin = 138.0;  $xScale = 93.0 / 479.0    # CNC_X = xOrigin - screenX * xScale
-$yOrigin = -81.0;  $yScale = 51.0 / 271.0    # CNC_Y = yOrigin + screenY * yScale
+$xOrigin = 45.0;   $xScale = 93.0 / 479.0    # CNC_X = xOrigin + screenX * xScale
+$yOrigin = -30.0;  $yScale = 51.0 / 271.0    # CNC_Y = yOrigin - screenY * yScale
 
 # Hard safety limits for every CNC move
 $X_MIN = 0.0;   $X_MAX = 155.0
@@ -61,8 +61,8 @@ foreach ($row in 0..4) {
             row  = $row
             cx   = $cx
             cy   = $cy
-            cncX = [Math]::Round($xOrigin - $cx * $xScale, 2)
-            cncY = [Math]::Round($yOrigin + $cy * $yScale, 2)
+            cncX = [Math]::Round($xOrigin + $cx * $xScale, 2)
+            cncY = [Math]::Round($yOrigin - $cy * $yScale, 2)
         }
         $id++
     }
@@ -119,35 +119,22 @@ Write-Host "  X range: $( ($buttons | Measure-Object cncX -Minimum).Minimum ) �
 Write-Host "  Y range: $( ($buttons | Measure-Object cncY -Minimum).Minimum ) – $( ($buttons | Measure-Object cncY -Maximum).Maximum ) mm"
 
 # ---------------------------------------------------------------------------
-# Build and flash firmware
+# Build firmware -- SKIPPED: 6x5 grid already on device, splat.exe not available
+# To re-enable: install Dash application, uncomment build+flash blocks below.
 # ---------------------------------------------------------------------------
-Write-Host "`n=== Building firmware ==="
-$buildOut = & $nodeExe $buildJs $buildBd 2>&1 | Out-String
-if ($buildOut -notmatch 'BUILD SUCCESS') { throw "Build failed:`n$buildOut" }
-Write-Host "Build OK"
-
-Write-Host "=== Flashing firmware ==="
-$flashDeadline = [DateTime]::Now.AddSeconds(90)
-$flashed = $false
-while ([DateTime]::Now -lt $flashDeadline -and -not $flashed) {
-    $flashOut = & $mtpExe $binPath 2>&1 | Out-String
-    if ($flashOut -match 'SUCCESS') { $flashed = $true; break }
-    if ($flashOut -notmatch 'System Firmware.*not found') { throw "Flash failed:`n$flashOut" }
-    Write-Host "  System Firmware not ready, retrying in 5s..."
-    Start-Sleep -Seconds 5
-}
-if (-not $flashed) { throw "Flash timed out after 90s" }
-Write-Host "Flash OK"
+# Write-Host "`n=== Building firmware ==="
+# $buildOut = & $nodeExe $buildJs $buildBd 2>&1 | Out-String
+# if ($buildOut -notmatch 'BUILD SUCCESS') { throw "Build failed:`n$buildOut" }
+# Write-Host "Build OK"
+Write-Host "`n=== Build/flash SKIPPED -- using existing firmware on device ==="
 
 # ---------------------------------------------------------------------------
 # CNC connection
 # ---------------------------------------------------------------------------
-$comPort = $null
-$cnc = Get-PnpDevice | Where-Object { $_.FriendlyName -match 'CH340' -and $_.Status -eq 'OK' } | Select-Object -First 1
-if ($cnc -and ($cnc.FriendlyName -match 'COM(\d+)')) { $comPort = "COM$($Matches[1])" }
-# NOTE: No fallback to other ports — wrong port causes CNC commands to hit HMI or other devices.
-# CH340 must be detected explicitly. If not found, check USB connection and power.
-if (-not $comPort) { throw "CNC CH340 not found. Check USB cable and power, then re-run." }
+$dev = Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue |
+       Where-Object { $_.FriendlyName -match 'CH340' } | Select-Object -First 1
+if (-not $dev) { throw 'CNC CH340 not found. Check USB cable and power, then re-run.' }
+$comPort = $dev.FriendlyName -replace '.*\((.+)\).*','$1'
 Write-Host "`nCNC: $comPort"
 
 $port = [System.IO.Ports.SerialPort]::new($comPort, 115200)
@@ -171,6 +158,26 @@ function Wait-Idle([int]$timeoutSec = 45) {
     Write-Warning "Wait-Idle timed out after ${timeoutSec}s"
 }
 
+# Power on HMI and wait for boot + MTP enumeration
+Write-Host "`n=== Powering on HMI ==="
+Send-Gcode "M3 S1000" 500
+Write-Host "Waiting 25s for boot and MTP device enumeration..."
+Start-Sleep -Seconds 25
+
+# Flash firmware -- SKIPPED (splat.exe not available, 6x5 grid already on device)
+# Write-Host "=== Flashing firmware ==="
+# $flashDeadline = [DateTime]::Now.AddSeconds(90)
+# $flashed = $false
+# while ([DateTime]::Now -lt $flashDeadline -and -not $flashed) {
+#     $flashOut = & $mtpExe $binPath 2>&1 | Out-String
+#     if ($flashOut -match 'SUCCESS') { $flashed = $true; break }
+#     if ($flashOut -notmatch 'System Firmware.*not found') { throw "Flash failed:`n$flashOut" }
+#     Write-Host "  System Firmware not ready, retrying in 5s..."
+#     Start-Sleep -Seconds 5
+# }
+# if (-not $flashed) { throw "Flash timed out after 90s" }
+# Write-Host "Flash OK"
+
 # ---------------------------------------------------------------------------
 # Main run
 # ---------------------------------------------------------------------------
@@ -178,11 +185,8 @@ $log = [System.Collections.Generic.List[PSObject]]::new()
 $prevBrightness = @{}
 
 try {
-    # Power on HMI and wait for boot + MTP enumeration
-    Write-Host "`n=== Powering on HMI430 ==="
-    Send-Gcode "M3 S1000" 500
-    Write-Host "Waiting 20s for boot and MTP device enumeration..."
-    Start-Sleep -Seconds 20
+    # HMI already powered on and booted above
+    Write-Host "`n=== HMI430 ready ==="
 
     # Confirm mode and ensure full retract (machine starts at 0,0,0 = safe)
     Send-Gcode "G21 G90 G54" 300
@@ -195,7 +199,7 @@ try {
     Send-Gcode "G0 X$($first.cncX) Y$($first.cncY)" 1500
     Wait-Idle
 
-    # Lower to hover — now we're over the screen area, stay at hover between presses
+    # Lower to hover -- now we're over the screen area, stay at hover between presses
     Send-Gcode "G0 Z$hoverZ" 800
     Wait-Idle
 
@@ -214,7 +218,7 @@ try {
     foreach ($b in $buttons) {
         Write-Host "`n--- btn$($b.id) [col=$($b.col) row=$($b.row)] screen($($b.cx),$($b.cy)) CNC($($b.cncX),$($b.cncY)) ---"
 
-        # Move to button at hover height (already over screen area — no full retract needed)
+        # Move to button at hover height (already over screen area -- no full retract needed)
         Assert-SafeCoords $b.cncX $b.cncY "btn$($b.id)"
         Send-Gcode "G0 X$($b.cncX) Y$($b.cncY)" 1000
         Wait-Idle
@@ -241,15 +245,15 @@ try {
         $allWhite = @($brights.Keys | Where-Object { $brights[$_] -gt 200 } | Sort-Object)
 
         if ($newHits.Count -eq 0) {
-            Write-Host "  MISS — no new button registered"
+            Write-Host "  MISS -- no new button registered"
         } elseif ($newHits.Count -eq 1 -and $newHits[0] -eq $b.id) {
-            Write-Host "  HIT  — btn$($b.id) correct"
+            Write-Host "  HIT  -- btn$($b.id) correct"
         } elseif ($newHits.Count -eq 1) {
             $off = $buttons[$newHits[0]]
             $dCol = $off.col - $b.col;  $dRow = $off.row - $b.row
-            Write-Host "  WRONG — expected btn$($b.id) but got btn$($newHits[0]) (col offset $dCol, row offset $dRow)"
+            Write-Host "  WRONG -- expected btn$($b.id) but got btn$($newHits[0]) (col offset $dCol, row offset $dRow)"
         } else {
-            Write-Host "  MULTI — $($newHits.Count) new buttons: $($newHits -join ', ')"
+            Write-Host "  MULTI -- $($newHits.Count) new buttons: $($newHits -join ', ')"
         }
 
         $log.Add([PSCustomObject]@{

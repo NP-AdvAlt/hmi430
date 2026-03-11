@@ -1,0 +1,65 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;                            http://www.splatco.com                            ;
+;===============================================================================
+;PURPOSE:
+; UI screen list and branch target.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2016 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+   #HMI           SetBacklight( h:1.0, m:0.3, md:60, od:60, p:0 )
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+;===============================================================================
+;-- screen ID's (these must match the order in the BRANCH below)
+;===============================================================================
+UIkScreenHome           EQU   0
+UIkScreenMenu           EQU   1
+UIkScreenScreen1        EQU   2
+UIkScreenScreen2        EQU   3
+UIkScreenScreen3        EQU   4
+UIkScreenSetDate        EQU   5
+UIkScreenSetTime        EQU   6
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Branch table to the screen entry code.
+;===============================================================================
+_UIBranchTarget
+   BranchM        UIbScreenID                         ;go run the new screen
+   Target         UIscreenHome
+   Target         UIscreenMenu
+   Target         UIscreenScreen1
+   Target         UIscreenScreen2
+   Target         UIscreenScreen3
+   Target         UIscreenSetDate
+   Target         UIscreenSetTime
+
+

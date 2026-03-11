@@ -4,3 +4,5 @@ _build.b1n
 _build.lst
 hmi_assets/sshot*.png
 *.tmp
+.superpowers/
+zcal4_*.jpg

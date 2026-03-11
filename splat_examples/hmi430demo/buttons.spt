@@ -1,0 +1,167 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; This module monitors and acts on the external buttons.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+      GoSub       _BTNsubInit                         	;initialise the task at power on
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; This routine is called at power-on to initialise the task.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_BTNsubInit:
+   LaunchTask     _BTNtask
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+_BTNtask:
+   Recall         UIbScreenID
+   LoadX          UIkScreenIdle
+   Compare
+   Not
+   Output         oLED1
+
+   Recall         UIbScreenID
+   LoadX          UIkScreenTherm
+   Compare
+   Not
+   Output         oLED2
+
+	GoIfInK        iSW1,_BTNDoIdle
+	GoIfInK        iSW2,_BTNDoClimate
+
+   Pause          5
+	Goto           _BTNtask
+
+_BTNDoIdle
+   GoIfMeq        UIbScreenID,UIkScreenIdle,_BTNKickBL ;nothing to do if idle screen already showing
+   GoSub          UIsubScreenShowIdle                 ;otherwise, show the idle screen
+	Goto				_BTNKickBL
+
+_BTNDoClimate
+   GoIfMeq        UIbScreenID,UIkScreenTherm,_BTNKickBL ;nothing to do if therm screen already showing
+   GoSub          UIsubScreenShowTherm                ;otherwise, show the therm screen
+	Goto				_BTNKickBL
+
+_BTNKickBL
+   #HMI           SetBacklight()                      ;kick the backlight
+   Goto				_BTNtask
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+
+

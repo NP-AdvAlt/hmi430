@@ -1,0 +1,170 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Menu.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+ 
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+UIMsRestartTimer     defSEM
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Called by any task to request display of this screen.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubScreenShowMenu:
+   LoadX          UIkScreenMenu
+   Goto           UIsubSetScreen
+
+
+;===============================================================================
+;DESCRIPTION:
+; Menu screen
+;===============================================================================
+UIscreenMenu:
+   #HMI           SetColours( f:HUEkGray, b:HUEkWhite )
+   #HMI           SetFont( f:"prop35.fon" )
+   #HMI           ButtonEvent2(        x:0px,    y:0px,   w:159px, h:135px, t:"Set\rTime",             rf:HUEkWhite, rb:HUEkOrange,  ev:UIsubScreenShowSetTime )
+   #HMI           ButtonEvent2(        x:161px,  y:0px,   w:159px, h:135px, t:"Set\rDate",             rf:HUEkWhite, rb:HUEkPurple,  ev:UIsubScreenShowSetDate )
+   #HMI           ButtonEvent2(        x:322px,  y:0px,   w:159px, h:135px, t:"Climate\nControl",      rf:HUEkBlack, rb:HUEkYellow,  ev:UIsubScreenShowTherm )
+   #HMI           ButtonEvent2( id:0,  x:0px,    y:137px, w:159px, h:135px,                            rf:HUEkWhite, rb:HUEkBlue,    ev:UIMsubBtnBacklight )
+   #HMI           SetFont( f:"prop70.fon" )
+   #HMI           ButtonEvent2(        x:161px,  y:137px, w:319px, h:135px, t:"Exit",                  rf:HUEkWhite, rb:HUEkMedGreen,ev:UIsubScreenShowIdle )
+
+   GoSub          UIMsubDispBacklight
+
+UIMRestartTimer
+   ClrS           UIMsRestartTimer
+   MarkTime
+_UIMLoop
+   Pause          10
+   GoIfST         UIsNewScreen,UIDoNewScreen          ;jump if there's a new screen to display
+   GoIfST         UIMsRestartTimer,UIMRestartTimer
+   LoopIfTiming   2000,_UIMLoop
+   GoSub          UIsubScreenShowIdle
+   Goto           _UIMLoop
+
+
+;===============================================================================
+;DESCRIPTION:
+; Displays the current backlight mode in the backlight button.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIMsubDispBacklight:
+   #HMI           ButtonEvent2( id:0, t:("Backlight\n[", nz( BRpMode, *PMbBacklight ), "]" ) )
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Backlight button callback, changes to the next backlight mode.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIMsubBtnBacklight:
+   SetS           UIMsRestartTimer                    ;restart the menu timeout timer
+   GoSub          BRsubToggleBacklight
+   Goto           UIMsubDispBacklight
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+
+

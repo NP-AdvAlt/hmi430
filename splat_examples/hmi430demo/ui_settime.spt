@@ -1,0 +1,347 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; UI allows the user to set the time.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+UISTkMaxDigits    EQU   4
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Called by any task to request display of this screen.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubScreenShowSetTime:
+   LoadX          UIkScreenSetTime
+   Goto           UIsubSetScreen
+
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+UIscreenSetTime:
+   SetMem         UIIbPrevSec,255                     ;ensure time is displayed immediately
+   SetMem         UIbMaxText,UISTkMaxDigits
+   GoSub          UINEsubClearBuffer
+
+   #HMI           Reset( b:HUEkLightestGray )
+
+   GoSub          UIsubDrawHeading
+   #HMI           Print( "\CSetTime" );
+   #HMI           SetBounds()
+
+   #HMI           SetFont( "prop25.fon" )
+   #HMI           SetColours( f:HUEkDarkGray, b:HUEkTransparent )
+   #HMI           SetCursor( x:0px, y:50px )
+   #HMI           Print( "New time:" )
+   #HMI           SetCursor( x:0px, y:190px )
+   #HMI           Print( "Current time:" )
+
+   GoSub          UINEsubShowNumpad
+   LoadI          0
+_UISTNumKeysLoop
+   ClrInstCount
+   #HMI           ButtonEvent2( id:b(=i), ev:UISTsubBtnTimeEntry )
+   IncI
+   ItoX
+   GoIfXle        9,_UISTNumKeysLoop
+
+   #HMI           ButtonEvent2( id:30, x:366px, y:60px,  w:108px, h:54px, t:"SAVE", m:"h1d1", ev:UISTsubBtnSave )
+   #HMI           ButtonEvent2(        x:366px, y:115px, w:108px, h:54px, t:"CLR",  ev:UISTsubBtnClearBuffer )
+   #HMI           ButtonEvent2(        x:366px, y:170px, w:108px, h:54px, t:"QUIT", ev:UIsubScreenShowMenu )
+
+   #HMI           SetColours( b:HUEkTransparent )
+   
+   GoSub          UISTsubDispSetTime
+
+_UISTLoop
+   Pause          10
+   GoIfST         UIsNewScreen,UIDoNewScreen          ;jump if there's a new screen to display
+   GoSub          UISTsubDispCurrentTime
+   Goto           _UISTLoop
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubDispCurrentTime:
+   RTCReadTime                                        ;get the time
+   RTCPushSS                                          ;has the time..
+   Recall         UIIbPrevSec
+   Compare                                            ;..changed?
+   RetIfZ                                             ;return if it hasn't
+   RTCPushSS                                          ;remember the time..
+   Store          UIIbPrevSec                         ;..we've displayed
+   #HMI           SetFont( f:"mono35.fon" );
+   #HMI           SetColours( f:HUEkDarkGray, b:HUEkTransparent )
+   #HMI           SetCursor( x:5px, y:230px )
+   RTCPushHH
+   RTCPushMM
+   #HMI           Print( b(=y,2), ":", b(=x,2) )
+   #HMI           SetFont( f:"mono35.fon" );
+   RTCPushSS
+   #HMI           Print( ":", b(=x,2) )
+   YieldTask
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubBtnSave:
+   GoSub          UISTsubGetTime
+   Recall         bScratchA
+   RTCPopHH
+   Recall         bScratchB
+   RTCPopMM
+   LoadX          0
+   RTCPopSS
+   RTCWriteTime
+   GoSub          UIPOPsubDrawPopup
+   #HMI           SetCursor( x:0, y:C-1 )
+   #HMI           Print( "\CNew time has\nbeen saved." )
+   Goto           UIsubScreenShowMenu
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubBtnClearBuffer:
+   GoSub          UINEsubClearBuffer
+   GoSub          UISTsubDispSetTime
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+;
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+UISTsubBtnTimeEntry:
+   GoSub          UINEsubBtnNumEntry
+   Goto           UISTsubDispSetTime
+
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UISTsubDispSetTime:
+   #HMI           SetFont( "prop70.fon" )
+   #HMI           SetColours( f:HUEkDarkGray, b:HUEkLightGray )
+   #HMI           SetBounds( x:2px, b:120px, w:180px, h:1 )
+   #HMI           Cls()
+   iiPrintText    COMHMI,1,"@"
+   LoadI          0
+_UISTDispLoop
+   iRecall        UIabTextEntry
+   ItoX
+   GoIfXne        2,_UISTDispThisOne
+   iiPrintText    COMHMI,":"
+_UISTDispThisOne
+   Push
+   GoIfnz         _UISTDispDigit
+   iiPrintText    COMHMI,"  "
+   Goto           _UISTNextDigit
+_UISTDispDigit
+   iiChrPrintX    COMHMI
+_UISTNextDigit
+   IncI
+   ItoX
+   GoIfXlt        UISTkMaxDigits,_UISTDispLoop
+   iiPrintText    COMHMI,3
+   #HMI           SetBounds()
+
+   #HMI           SetColours( f:HUEkDarkGray, b:HUEkTransparent )
+   Recall         UIbTextIdx
+   GoIfMgt        UIbTextIdx,1,_UISTHideSave
+   GoSub          UISTsubGetTime
+   GoIfMgt        bScratchA,23,_UISTHideSave
+   GoIfMgt        bScratchB,59,_UISTHideSave
+   #HMI           ButtonEvent2( id:30, m:"h0d0" )     ;visible & enabled
+   Goto           _UISTEndSaveButtonCtrl
+_UISTHideSave
+   #HMI           ButtonEvent2( id:30, m:"d1a30%" )   ;fade & disable
+_UISTEndSaveButtonCtrl
+
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Fetch the entered time from the text buffer
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  bScratchA: hours
+; <-  bScratchB: minutes
+;===============================================================================
+UISTsubGetTime:
+   LoadI          0                                   ;get the..
+   GoSub          _UISTsubGet2Dig
+   Store          bScratchA                           ;..hours and save
+   LoadI          2                                   ;get the..
+   GoSub          _UISTsubGet2Dig
+   Store          bScratchB                           ;..minutes and save
+
+_UISTsubGet2Dig
+   GoSub          _UISTsubConvToNum                   ;conv first ASCII to num
+   float                                              ;make it..
+   fLoadQ         10.0
+   fMul                                               ;..10's
+   fWtoQ
+   IncI                                               ;next digit
+   GoSub          _UISTsubConvToNum                   ;conv next ASCII to num
+   float                                              ;add to..
+   fAdd                                               ;..10's
+   fix                                                ;return in X
+   Return
+
+_UISTsubConvToNum
+   iRecall        UIabTextEntry                       ;get this digit
+   Push                                               ;return zero if..
+   GoIfXlt        "0",_UISTRetZero
+   Push
+   GoIfXgt        "9",_UISTRetZero                    ;..it's not a ASCII number
+   LoadX          "0"                                 ;otherwise, conv ASCII..
+   Sub                                                ;..to binary
+   Return
+_UISTRetZero
+   LoadX          0
+   Return
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+
+

@@ -1,0 +1,411 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Utilities to assist with number entry
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+NEwBtnDispCB      #EQU  UIbShared1
+; &               #EQU  UIbShared2
+NEbTextIdx        #EQU  UIbShared3                    ;shared index into NEabTextEntry
+NEbMaxText        #EQU  UIbShared4                    ;maximum nof chars to enter
+NEkBufLen         #EQU  7
+NEabTextEntry     #EQU  UIbShared5                    ;buffer
+; to              #EQU  UIbShared11
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+;-- digital inputs --
+
+;-- digital outputs --
+
+;-- analogue inputs --
+
+;-- analogue outputs --
+
+;-- serial --
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Displays the number pad.  On entry, X is the max number of chars and NVPtr
+; optionally points to a list of positional values (or 0 if the default should
+; be used).
+; The positional table takes the following format:
+;
+;  NEpPositioning NV0fNum  55.0     ;XStart (%)
+;                 NV0fNum  10.0     ;YStart (%)
+;                 NV0fNum  15.0     ;XStep (%)
+;                 NV0fNum  22.5     ;YStep (%)
+;                 NV0fNum  14.8     ;Width (%)
+;                 NV0fNum  22.0     ;Height (%)
+;
+; Note after this function returns, the caller must set a new display callback 
+; in NEwBtnDispCB via "Suspend".  This callback will be called after each 
+; keypress has been aded to the buffer.  EG:
+;
+;   LoadX          4                                   ;max 4 chars
+;   NVSetPtr       0                                   ;default positioning
+;   #HMI           SetColours( f:HUEkWhite, b:HUEkDarkGrey )
+;   #HMI           SetFont( "prop20.fon" )
+;   GoSub          NEsubShowNumpad                     ;display the numpad
+;   GoSub          APPsubDispNumber
+;   ...
+;APPsubDispNumber                                      ;your draw routine
+;   Suspend        NEwBtnDispCB                        ;store the callback address and return, the code below is the callback
+;   #HMI           SetColours()                        ;this is the callback code, set colours & stuff..
+;   #HMI           SetCusor()
+;   GoSub          NEsubDisplayBuffer                  ;..and display the buffer
+;   Return                                             ;all done, we'll be called again on next keypress
+;
+;PARAMETERS:
+;  -> x:Max nof digits
+;  -> NVPtr: positioning parameters, or 0 for defaults.
+;RETURNS:
+; <-  Nil
+;===============================================================================
+;-- U indicies
+_NEkuXPos      #EQU  0
+_NEkuYPos      #EQU  4
+_NEkuPtr       #EQU  0
+
+;-- NVTableIndicies
+;button values
+_NEknvV_Value  #EQU  0
+_NEknvV_RecLen #EQU  1
+
+;positional values
+_NEknvP_XStart #EQU  0
+_NEknvP_YStart #EQU  4
+_NEknvP_XStep  #EQU  8
+_NEknvP_YStep  #EQU  12
+_NEknvP_Width  #EQU  16
+_NEknvP_Height #EQU  20
+
+NEsubShowNumpad:
+   Store          NEbMaxText                          ;save max chars
+   NVfGetPtrW
+   fTestWeqZ                                          ;have we been given a pos table?
+   GoIfF          _NESavePosPtr                       ;yes, then jump
+   NVSetPtr       NEpPositioning                      ;owise use the default
+   NVfGetPtrW
+_NESavePosPtr
+   WtoU           _NEkuPtr                            ;save the pos ptr
+;   #HMI           FreezeScreen( 1 )
+   GoSub          NEsubClearBuffer
+   GoSub          NEsubEraseNumButtons
+
+   ;create the buttons offscreen (fast) but with correct ID, Value, Text, width & height
+   ;we use 2 steps because it's easier to deal with one NVEM table at a time
+   NVSetPage      0
+   NVSetRecNum    0
+   NVfReadW       _NEknvP_Width                       ;grab the width..
+   NVfReadQ       _NEknvP_Height                      ;..and height
+   NVSetPtr       NEpNumpad                           ;now switch to the button value table
+   NVSetRecLen    _NEknvV_RecLen
+_NENumpadLoop
+   ClrInstCount
+   NVPushRecNum
+   NVPushByte     _NEknvV_Value
+   #HMI           ButtonEvent2( id:b(=y), x:9999px, y:9999px, w:(f(=w),"%"), h:(f(=q),"%"), v:b(=x), t:b(=x,c), ev:NEsubBtnNumEntry )
+   NVIncRecNum
+   NVPushRecNum
+   GoIfXlt        12,_NENumpadLoop
+
+   ;now move the buttons to their correct position
+   UtoW           _NEkuPtr                            ;restore the user pos ptr
+   NVfPutPtrW
+   NVSetRecLen    0
+   NVSetRecNum    0
+   NVfReadW       _NEknvP_YStart
+   WtoU           _NEkuYPos
+   LoadI          0                                   ;button ID
+_NENumpadNextLine
+   LoadX          0                                   ;column count
+   NVfReadW       _NEknvP_XStart
+   WtoU           _NEkuXPos
+_NENumpadPosLoop
+   ClrInstCount
+   UtoW           _NEkuXPos
+   UtoQ           _NEkuYPos
+   #HMI           ButtonEvent2( id:b(=i), x:(f(=w),"%"), y:(f(=q),"%") )
+   NVfReadQ       _NEknvP_XStep
+   fAdd
+   WtoU           _NEkuXPos
+   IncI
+   ItoX
+   GoIfXeq        12,_NENumpadEnd
+   IncX
+   Push
+   GoIfXne        3,_NENumpadPosLoop
+   UtoW           _NEkuYPos
+   NVfReadQ       _NEknvP_YStep
+   fAdd
+   WtoU           _NEkuYPos
+   Goto           _NENumpadNextLine
+_NENumpadEnd
+;   #HMI           FreezeScreen( 0 )
+   Return
+
+
+NEpNumpad      NV0Byte  "123456789.0-"
+
+NEpPositioning NV0fNum  55.0     ;XStart (%)
+               NV0fNum  10.0     ;YStart (%)
+               NV0fNum  15.0     ;XStep (%)
+               NV0fNum  22.5     ;YStep (%)
+               NV0fNum  14.8     ;Width (%)
+               NV0fNum  22.0     ;Height (%)
+
+
+;===============================================================================
+;DESCRIPTION:
+; Erases all the number buttons AND clears the callback.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+NEsubEraseNumButtons:
+   LoadI          0
+_NEEraseBtnLoop
+   ClrInstCount
+   #HMI           ButtonEvent2( id:b(=i), h:0 )
+   IncI
+   ItoX
+   GoIfXle        12,_NEEraseBtnLoop
+   fLoadW         0                                   ;clear the..
+   fixToMem16U    NEwBtnDispCB                        ;..callback
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Clears the text buffer and sets the index back to the "right edge" based on
+; the value in NEbMaxText the calls the display CB.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+NEsubClearBufferDisp:
+   GoSub          NEsubClearBuffer
+   Goto           NEsubJumpCB
+
+
+;===============================================================================
+;DESCRIPTION:
+; Clears the text buffer and sets the index back to the "right edge" based on
+; the value in NEbMaxText.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+NEsubClearBuffer:
+   LoadI          0
+_NEInitLoop
+   iSetMem        NEabTextEntry," "                   ;zero the..
+   IncI
+   ItoX
+   GoIfXlt        NEkBufLen,_NEInitLoop               ;..whole buffer
+   Recall         NEbMaxText                          ;move the position back..
+   Store          NEbTextIdx                          ;..to the "right edge"
+   Return
+
+
+
+;===============================================================================
+;DESCRIPTION:
+; Processes the button press, storing the digits in the buffer.
+;PARAMETERS:
+;  -> 
+;RETURNS:
+; <-  
+;===============================================================================
+NEsubBtnNumEntry:
+   GoSub          UIsubGetButton
+   fix
+   Push
+   PopU           0
+   Push
+   GoIfXeq        8,_NEDoClr
+   Push
+   GoIfXeq        45,_NEDoMinus
+   GoIfXne        46,_NEProcessKey
+   LoadI          0                                   ;ensure there's no "." already in the buffer
+_NEChkDotLoop
+   iRecall        NEabTextEntry
+   GoIfXeq        ".",Return                          ;abort if there is
+   IncI
+   ItoX
+   Recall         NEbMaxText
+   Compare
+   GoIfnz         _NEChkDotLoop                       ;loop if not at end
+   Goto           _NEProcessKey                       ;no existing ".", go add one now
+_NEDoClr
+   GoIfXne        11,_NEProcessKey
+   GoSub          NEsubClearBuffer
+   Goto           NEsubJumpCB
+_NEDoMinus
+   Recall         NEbMaxText
+   Recall         NEbTextIdx
+   Compare
+   GoIfXne        CMPkXeqY,Return                     ;ignore if digits have already been entered
+_NEProcessKey
+   GoIfMz         NEbTextIdx,Return                   ;abort if buffer is full
+
+_NEShuffleLeft
+   LoadI          0
+_NEShuffleLeftLoop
+   IncI
+   ItoX
+   Recall         NEbMaxText
+   Compare
+   GoIfz          _NEStoreDigitRight
+   iRecall        NEabTextEntry
+   DecI
+   iStore         NEabTextEntry
+   IncI
+   Goto           _NEShuffleLeftLoop
+_NEStoreDigitRight
+   Recall         NEbMaxText
+   XtoI
+   DecI
+   PushU          0
+   iStore         NEabTextEntry
+   DecM           NEbTextIdx
+NEsubJumpCB:
+   floatMem16U    NEwBtnDispCB
+   fGoIfZ         Return                              ;nothing to display if no callback provided
+   Resume         NEwBtnDispCB
+
+
+;===============================================================================
+;DESCRIPTION:
+; Routine determines if the buffer is empty.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  x: TRUE if the buffer is empty
+;===============================================================================
+NEsubGetBufLen:
+   Recall         NEbMaxText
+   Recall         NEbTextIdx
+   Sub
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This routine displays the contents of the text buffer starting from the
+; current cursor location.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+NEsubDisplayBuffer:
+   LoadI          0
+_NEDispLoop
+   iRecall        NEabTextEntry
+   #HMI           Print( b(=x,c) )
+_NENextDigit
+   IncI
+   ItoX
+   Recall         NEbMaxText
+   Compare
+   GoIfnz         _NEDispLoop
+_NEEndDisp
+   Return
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+

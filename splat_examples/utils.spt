@@ -1,0 +1,284 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; A collection of utilities
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; A helper the allows a subroutine to return using a goto, eg "GoIfXlt 3,Return"
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+Return:
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Calculates Q % W = W
+;PARAMETERS:
+;  -> Q: number (clobbered)
+;  -> W: divisor
+;RETURNS:
+; <-  W: result
+;===============================================================================
+fMod:
+   QtoU           4                                      ;save
+   WtoU           8                                      ;save
+   GoSub          fIntDiv
+   UtoQ           8                                      ;get original W
+   fMul
+   UtoQ           4
+   fSub                                                  ;calc remainder
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Calculates (int)(Q / W) = W
+;PARAMETERS:
+;  -> Q: number (clobbered)
+;  -> W: divisor
+;RETURNS:
+; <-  W: result
+;===============================================================================
+fIntDiv:
+   fDiv
+   WtoU           0                                      ;temp save
+   fAbs
+   fLoadQ         0.5
+   fGoIfWgeQ      _fIntDoAdj
+   fLoadW         0.0
+   Return
+_fIntDoAdj
+   UtoW           0
+   fGoIfNeg       _fInfDoUnRound                         ;round down as..
+   fLoadQ         -0.5
+_fInfDoUnRound
+   fAdd                                                  ;..fixToU will round up, thus U will contain the integer
+   fixToU         0
+   floatFromU     0
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Saves the NV pointers (uses UV registers)
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+NVSavePtrs:
+   WtoU           7                                   ;save W
+   NVfGetPtrW
+   WtoU           0
+   NVPushRecLen
+   PopU           4
+   NVPushRecNum
+   PopU           5
+   NVPushPage
+   PopU           6
+   UtoW           7                                   ;restore W
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Restores the NV pointers following a call to NVSavePtrs
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+NVRestorePtrs:
+   WtoU           7                                   ;save W
+   PushU          6
+   NVPopPage
+   UtoW           0
+   NVfPutPtrW
+   PushU          4
+   NVPopRecLen
+   PushU          5
+   NVPopRecNum
+   UtoW           7                                   ;restore W
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This routine is used to smooth a new reading.  The equation is:
+;  SmoothedValue = NewReading * Smoothing + SmoothedValue * (1.0 - Smoothing)
+; Usage:
+;  fMyVar   defFLOAT ;filtered reading
+;
+;  fAnIn    0        ;new reading in W
+;  fLoadQ   0.1      ;smoothing const
+;  LoadI    fMyVar
+;  GoSub    fFilter  ;fMyVar contains old and new reading
+;PARAMETERS:
+;  -> w: new reading
+;  -> q: smoothing constant (0.1 means use 1/10th of the new reading and 0.9 of
+;  existing smoothed value)
+;  -> i: smoothed variable float address
+;RETURNS:
+; <-  Nil
+;===============================================================================
+fFilter:
+   fMul                                               ;calc part of new reading, FracNew = New * Smoothing
+   WtoU           4                                   ;save
+   fLoadW         1.0
+   fSwap
+   fSub                                               ;calc InvSmoothing = 1.0 - Smoothing
+   iRecall        0                                   ;load the..
+   PopU           0
+   iRecall        1
+   PopU           1
+   iRecall        2
+   PopU           2
+   iRecall        3
+   PopU           3
+   UtoQ           0                                   ;..filter variable
+   fMul                                               ;calc FracFilter = Filter * InvSmoothing
+   UtoQ           4
+   fAdd                                               ;calc NewFilt = FracFilter + FracNew
+   WtoU           0                                   ;write back to the..
+   PushU          0
+   iStore         0
+   PushU          1
+   iStore         1
+   PushU          2
+   iStore         2
+   PushU          3
+   iStore         3                                   ;..filter variable
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Calculates a polynomial of any order.  The control table format is:
+;  NV0Byte     N     ;The order of the polynomial
+;  NV0fNum     An    ;The X^n coefficient
+;  NV0fNum     An-1  ;The X^(n-1) coefficient
+;   ....
+;  NVfNum      A1    ;The X coefficient
+;  NVfNum      A0    ;The constant
+;
+; Example:
+; The polynomial Y = 1.4 * x^4 - 1.3 * x^3 + 1.2 * x^2 - 1.1 * x  + 1
+; is a 4th order polynomial. It's control table would be
+;PolyTab:
+;  NV0Byte  4     ;Fourth order
+;  NV0fNum  1.4   ;Coefficient for x^4
+;  NV0fNum  -1.3  ;Coefficient for x^3
+;  NV0fNum  1.2   ;Coefficient for x^2
+;  NV0fNum  -1.1  ;Coefficient for x^1
+;  NV0fNum  1.0   ;Constant
+;PARAMETERS:
+;  -> W The argument value (normally called X)
+;  -> NVEMPtr Control table address
+;RETURNS:
+; <-  W the y result
+;===============================================================================
+PolyCalculate:
+   WtoU           0                                   ;save argument
+   NVSetpage      0
+   NVSetRecNum    0
+   NVSetRecLen    4
+   NVPushByte     0                                   ;get the order of the poly to X
+   XtoI
+   NVAddPtr       1                                   ;now points to first coefficient
+   NVfReadW       0                                   ;get first coefficient
+_PolyCalcLoop
+   NVAdvPtr                                           ;ready for next time
+   UtoQ           0                                   ;argument
+   fMul
+   NVfReadQ       0                                   ;get next coefficient
+   fAdd
+   DecI
+   GoIfInz        _PolyCalcLoop
+   Return
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+

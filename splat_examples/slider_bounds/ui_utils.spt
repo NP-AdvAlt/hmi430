@@ -1,0 +1,223 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; A collection of key touch screen utilities.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+;-- backlight state
+UIBLkOff             EQU   0
+UIBLkMedium          EQU   1
+UIBLkHigh            EQU   2
+
+;-- button state
+UIkBTNShortRelease   EQU   0
+UIkBTNPressed        EQU   1
+UIkBtnLongRelease    EQU   2
+UIkBtnHeld           EQU   3
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; May be called at power on to perform some basic UI initialisation, including
+; automatic touchscreen calibration and registering the connect event handler.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubInitialise:
+   SPxPoll1       0,10                                ;get the touchscreen..
+   PushU          0                                   ;..cal status
+   GoIfT          _NoCalReqd                          ;jump if we've been calibrated
+   SPxCmd0        0,10                                ;go perform cal, won't return until complete
+_NoCalReqd
+;   SetU           0,1                                 ;show touch crosshairs
+   SetU           0,0                                 ;hide touch crosshairs
+   SPxCmd1        0,10
+   #HMI           ConnectEvent( UIsubConnectEvent )   ;register the connect handler
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This routine gets the extra parameters associated with each button press.
+; SimpleHMI sends the button info in this format:
+;     ButtonID,PressedState,xCoordinate,yCoordinate.
+; Where:
+;  ',' = 2
+;  '.' = 5
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  W: button value
+; <-  U[0]: x coordinate
+; <-  U[4]: y coordinate
+; <-  Y: button ID
+; <-  X: button pressed state
+;  - released = 0
+;  - pressed  = 1
+;  - error occurred = 4 (should never happen)
+; For "repeating" buttons, state may also be:
+;  - long release = 2
+;  - held  = 3 (continues to be reported at the repeat rate while the button is
+;  being held).
+; Helpful hint regarding state value:
+;  -  bit 0 is the pressed/release state
+;  -  bit 1 is true if "held"
+;===============================================================================
+UIsubGetButton:
+   LoadX          5                                   ;does the buffer hold a..
+   aCOMRx_FindXInBuf COMHMI                           ;..EndRspHdr?
+   GoIfXeq        255,_UIGetButtonError               ;jump if not
+
+   aCOMRx_fGetNum COMHMI,3                            ;get the button id
+   RtoX                                               ;abort if..
+   GoIfnz         _UIGetButtonError                   ;..error
+   fix
+   aCOMRx_ReadOne COMHMI                              ;seperator
+   GoIfXne        2,_UIGetButtonError
+
+   aCOMRx_fGetNum COMHMI,3                            ;get the pressed state
+   RtoX                                               ;abort if..
+   GoIfnz         _UIGetButtonError                   ;..error
+   fix
+   aCOMRx_ReadOne COMHMI                              ;end
+   GoIfXne        2,_UIGetButtonError
+
+   aCOMRx_fGetNum COMHMI,6                            ;get the X coordinate
+   RtoX                                               ;abort if..
+   GoIfnz         _UIGetButtonError                   ;..error
+   aCOMRx_ReadOne COMHMI                              ;end
+   GoIfXne        2,_UIGetButtonError
+   WtoU           0                                   ;save X
+
+   aCOMRx_fGetNum COMHMI,6                            ;get the Y coordinate
+   RtoX                                               ;abort if..
+   GoIfnz         _UIGetButtonError                   ;..error
+   aCOMRx_ReadOne COMHMI                              ;end
+   WtoU           4                                   ;save Y
+   fLoadW         0.0
+   GoIfXne        2,Return
+
+   aCOMRx_fGetNum COMHMI,8                            ;get the value
+   RtoX                                               ;abort if..
+   GoIfnz         _UIGetButtonError                   ;..error
+   aCOMRx_ReadOne COMHMI                              ;end
+   Pop
+
+   Return
+
+_UIGetButtonError
+   LoadX          4                                   ;error
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; This is the connect event handler.  Make sure you either call the
+; UIsubInitialise subroutine above, or add this to the start of your code:
+;     #HMI           ConnectEvent( UIsubConnectEvent )
+; This subroutine processes:
+;  - Changes to the backlight state where it turns on the display button lamp
+;  when the backlight turns off.
+;  - PowerOnPress initiates a touch screen calibration, just in case it's needed
+;  after leaving the factory.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubConnectEvent:
+   LoadX          5                                   ;does the buffer hold a..
+   aCOMRx_FindXInBuf COMHMI                           ;..EndRspHdr?
+   GoIfXeq        255,Return                          ;jump if not
+
+   aCOMRx_GetHex  COMHMI                              ;get the message id
+   Push
+   GoIfXeq        0,_UIProcessBacklight               ;jump if this is a backlight message
+   Push
+   GoIfXeq        1,_UIPowerOnTouch                   ;user has been touching the screen since power on
+   Return
+
+_UIProcessBacklight
+   aCOMRx_ReadOne COMHMI                              ;get the separator
+   GoIfXne        2,Return                            ;abort if not separator
+   aCOMRx_GetHex  COMHMI                              ;get the backlight state, one of UIBLkHigh etc
+   aCOMRx_ReadOne COMHMI                              ;get the separator
+   GoIfXne        2,Return                            ;abort if not separator
+   aCOMRx_fGetNum COMHMI,255                          ;get the backlight level
+   aCOMRx_ReadOne COMHMI                              ;get the terminator
+   GoIfXne        5,Return                            ;abort if not terminator
+   Goto           UIsubBacklightEvent                 ;the app must have this label in it's code: X: UIBLkOff/UIBLkMedium/UIBLkHigh backlight at off/medium/high level, w: backlight level
+
+_UIPowerOnTouch
+   aCOMRx_ReadOne COMHMI                              ;get the endhdr
+   GoIfXne        5,Return                            ;abort if not endhdr
+   #HMI           Reset()                             ;erase all HMI objects
+   SPxCmd0        0,10                                ;go perform cal, won't return until complete
+   Goto           UIsubRedrawAfterCal                 ;the app must have this label in it's code
+
+

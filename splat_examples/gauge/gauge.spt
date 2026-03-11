@@ -1,0 +1,102 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;                            http://www.splatco.com                            ;
+;===============================================================================
+;PURPOSE:
+; Gauge with rotating dial example.  This example was designed for the HMI430
+; but will also run on a HMI700.
+;
+; gauge.png, needle_grn.png, needle_ylw.png, needle_red.png must be placed in
+; the "Internal Storage" drive.
+;
+;===============================================================================
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+;-- colours --
+HUEkBlack         #EQU  'FF000000
+
+kPcntToAngleMul   #EQU  -257.0                        ;maximum angle
+kPcntYellow       #EQU  40.0                          ;% for yellow needle
+kPcntRed          #EQU  80.0                          ;% for red needle
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+fLevel            defFLOAT                            ;current gauge level, 0 - 100%
+fAdjust           defFLOAT                            ;for the demo, level step size
+fAngle            defFLOAT                            ;current gauge angle (°)
+
+
+;===============================================================================
+;DESCRIPTION:
+; Application start
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+   LaunchTask     taskUI
+   RunTasksForever
+
+
+;===============================================================================
+;DESCRIPTION:
+; This example shows how to draw a rotating dial in a gauge.
+;PARAMETERS:
+;  -> nil
+;RETURNS:
+; <-  nil
+;===============================================================================
+taskUI:
+   #HMI           Reset( b:HUEkBlack )                                                       ;draw the black background
+   #HMI           DrawImage( x:131px, y:26px, i:"gauge.png" )                                ;draw the gauge
+   #HMI           DrawImage( id:0, x:177px, y:100px, i:"needle_grn.png", z:65, ox:63, oy:36 )  ;draw the dial, note the z index places the dial on top of the gauge
+   fLoadW         5.0                                                                        ;set the..
+   fStore         fAdjust                                                                    ;..step level (%)
+
+_Loop
+   YieldTask
+_Recalc
+   fRecallW       fLevel                                                                     ;calc the..
+   fRecallQ       fAdjust
+   fAdd                                                                                      ;..new level
+   fLoadQ         100.0                                                                      ;jump if max limit..
+   fGoIfWgtQ      _SwapDir                                                                   ;..exceeded
+   fLoadQ         0.0                                                                        ;jump if max limit..
+   fGoIfWltQ      _SwapDir                                                                   ;..exceeded
+   fStore         fLevel                                                                     ;owise within range, save the level
+   fLoadQ         0.01                                                                       ;normalise
+   fMul
+   fLoadQ         kPcntToAngleMul                                                            ;convert % to..
+   fMul                                                                                      ;..an angle
+   fStore         fAngle
+   fRecallW       fLevel
+   fLoadQ         kPcntRed
+   fGoIfWgeQ      _DrawRed
+   fLoadQ         kPcntYellow
+   fGoIfWgeQ      _DrawYellow
+   #HMI           DrawImage( id:0, i:"needle_grn.png", ro:f(*fAngle) )                       ;rotate the needle
+   Goto           _Loop                                                                      ;rinse and repeat
+_DrawRed
+   #HMI           DrawImage( id:0, i:"needle_red.png", ro:f(*fAngle) )                       ;rotate the needle
+   Goto           _Loop                                                                      ;rinse and repeat
+_DrawYellow
+   #HMI           DrawImage( id:0, i:"needle_ylw.png", ro:f(*fAngle) )                       ;rotate the needle
+   Goto           _Loop                                                                      ;rinse and repeat
+
+_SwapDir
+   fRecallW       fAdjust                                                                    ;swap direction by..
+   fNeg
+   fStore         fAdjust                                                                    ;..negating the step angle
+   Pause          50                                                                         ;pause at the start & end
+   Goto           _Recalc                                                                    ;go recalculate
+
+

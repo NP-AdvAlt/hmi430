@@ -1,172 +1,21 @@
-; ui_test.spt -- adaptive calibration grid (30 buttons)
+; ui_test.spt -- mapping verification (2x 4x4px buttons)
 uiTask:
     YieldTask
     YieldTask
 uiTask_draw:
-    GoSub drawGrid
+    GoSub drawButtons
     YieldTask
     YieldTask
 uiTask_idle:
     Pause 500
     GoTo uiTask_idle
 
-drawGrid:
-    #HMI SetColours(f:'FFFFFFFF, b:'FF000000)
+drawButtons:
+    #HMI SetColours(f:'FF000000, b:'FFFFFFFF)
     #HMI Reset(b:0)
-    ClrInstCount
-    #HMI ButtonEvent2(id:0, x:0px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn0)
-    #HMI ButtonEvent2(id:1, x:80px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn1)
-    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn2)
-    #HMI ButtonEvent2(id:3, x:240px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn3)
-    #HMI ButtonEvent2(id:4, x:320px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn4)
-    ClrInstCount
-    #HMI ButtonEvent2(id:5, x:400px, y:0px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn5)
-    #HMI ButtonEvent2(id:6, x:0px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn6)
-    #HMI ButtonEvent2(id:7, x:80px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn7)
-    #HMI ButtonEvent2(id:8, x:160px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn8)
-    #HMI ButtonEvent2(id:9, x:240px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn9)
-    ClrInstCount
-    #HMI ButtonEvent2(id:10, x:320px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn10)
-    #HMI ButtonEvent2(id:11, x:400px, y:54px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn11)
-    #HMI ButtonEvent2(id:12, x:0px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn12)
-    #HMI ButtonEvent2(id:13, x:80px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn13)
-    #HMI ButtonEvent2(id:14, x:160px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn14)
-    ClrInstCount
-    #HMI ButtonEvent2(id:15, x:240px, y:109px, w:80px, h:54px, t:" ", rb:'FFA0A0A0, ev:onBtn15)
-    #HMI ButtonEvent2(id:16, x:320px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn16)
-    #HMI ButtonEvent2(id:17, x:400px, y:109px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn17)
-    #HMI ButtonEvent2(id:18, x:0px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn18)
-    #HMI ButtonEvent2(id:19, x:80px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn19)
-    ClrInstCount
-    #HMI ButtonEvent2(id:20, x:160px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn20)
-    #HMI ButtonEvent2(id:21, x:240px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn21)
-    #HMI ButtonEvent2(id:22, x:320px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn22)
-    #HMI ButtonEvent2(id:23, x:400px, y:163px, w:80px, h:55px, t:" ", rb:'FF404040, ev:onBtn23)
-    #HMI ButtonEvent2(id:24, x:0px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn24)
-    ClrInstCount
-    #HMI ButtonEvent2(id:25, x:80px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn25)
-    #HMI ButtonEvent2(id:26, x:160px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn26)
-    #HMI ButtonEvent2(id:27, x:240px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn27)
-    #HMI ButtonEvent2(id:28, x:320px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn28)
-    #HMI ButtonEvent2(id:29, x:400px, y:218px, w:80px, h:54px, t:" ", rb:'FF404040, ev:onBtn29)
+    #HMI ButtonEvent2(id:0, x:98px, y:98px, w:4px, h:4px, t:" ", rb:'FFFFFFFF, pb:'FF000000, ev:onPress)
+    #HMI ButtonEvent2(id:1, x:408px, y:200px, w:4px, h:4px, t:" ", rb:'FFFFFFFF, pb:'FF000000, ev:onPress)
     Return
 
-onBtn0:
-    #HMI ButtonEvent2(id:0, x:0px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn0)
-    Return
-
-onBtn1:
-    #HMI ButtonEvent2(id:1, x:80px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn1)
-    Return
-
-onBtn2:
-    #HMI ButtonEvent2(id:2, x:160px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn2)
-    Return
-
-onBtn3:
-    #HMI ButtonEvent2(id:3, x:240px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn3)
-    Return
-
-onBtn4:
-    #HMI ButtonEvent2(id:4, x:320px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn4)
-    Return
-
-onBtn5:
-    #HMI ButtonEvent2(id:5, x:400px, y:0px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn5)
-    Return
-
-onBtn6:
-    #HMI ButtonEvent2(id:6, x:0px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn6)
-    Return
-
-onBtn7:
-    #HMI ButtonEvent2(id:7, x:80px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn7)
-    Return
-
-onBtn8:
-    #HMI ButtonEvent2(id:8, x:160px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn8)
-    Return
-
-onBtn9:
-    #HMI ButtonEvent2(id:9, x:240px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn9)
-    Return
-
-onBtn10:
-    #HMI ButtonEvent2(id:10, x:320px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn10)
-    Return
-
-onBtn11:
-    #HMI ButtonEvent2(id:11, x:400px, y:54px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn11)
-    Return
-
-onBtn12:
-    #HMI ButtonEvent2(id:12, x:0px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn12)
-    Return
-
-onBtn13:
-    #HMI ButtonEvent2(id:13, x:80px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn13)
-    Return
-
-onBtn14:
-    #HMI ButtonEvent2(id:14, x:160px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn14)
-    Return
-
-onBtn15:
-    #HMI ButtonEvent2(id:15, x:240px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn15)
-    Return
-
-onBtn16:
-    #HMI ButtonEvent2(id:16, x:320px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn16)
-    Return
-
-onBtn17:
-    #HMI ButtonEvent2(id:17, x:400px, y:109px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn17)
-    Return
-
-onBtn18:
-    #HMI ButtonEvent2(id:18, x:0px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn18)
-    Return
-
-onBtn19:
-    #HMI ButtonEvent2(id:19, x:80px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn19)
-    Return
-
-onBtn20:
-    #HMI ButtonEvent2(id:20, x:160px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn20)
-    Return
-
-onBtn21:
-    #HMI ButtonEvent2(id:21, x:240px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn21)
-    Return
-
-onBtn22:
-    #HMI ButtonEvent2(id:22, x:320px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn22)
-    Return
-
-onBtn23:
-    #HMI ButtonEvent2(id:23, x:400px, y:163px, w:80px, h:55px, t:" ", rb:'FFFFFFFF, ev:onBtn23)
-    Return
-
-onBtn24:
-    #HMI ButtonEvent2(id:24, x:0px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn24)
-    Return
-
-onBtn25:
-    #HMI ButtonEvent2(id:25, x:80px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn25)
-    Return
-
-onBtn26:
-    #HMI ButtonEvent2(id:26, x:160px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn26)
-    Return
-
-onBtn27:
-    #HMI ButtonEvent2(id:27, x:240px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn27)
-    Return
-
-onBtn28:
-    #HMI ButtonEvent2(id:28, x:320px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn28)
-    Return
-
-onBtn29:
-    #HMI ButtonEvent2(id:29, x:400px, y:218px, w:80px, h:54px, t:" ", rb:'FFFFFFFF, ev:onBtn29)
+onPress:
     Return

@@ -1,0 +1,145 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; This file starts the tasks.  The build file must list the INITSEG first,
+; followed by one instance of LAUNCHSEG.  Thus, SPLat will run all the INITSEG
+; code then run LAUNCHSEG which does some initial power on housekeeping and then
+; calls "RunTasksForever".
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2013 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;=== public ===
+;<DEF_SEM>
+LNCHsPermFail     defSEM                              ;TRUE if a perm recall failed during startup
+sScratchA         defSEM                              ;semaphore scratchpad (assume value destroyed after yielding)
+
+;<DEF_BYTE>
+bScratchA         defBYTE                             ;byte scatchpad (assume value destroyed after yielding)
+bScratchB         defBYTE                             ;byte scatchpad (assume value destroyed after yielding)
+
+;<DEF_WORD>
+wScratchA         defWORD                             ;word scatchpad (assume value destroyed after yielding)
+
+;<DEF_FLOAT>
+fScratchA         defFLOAT                            ;float scatchpad (assume value destroyed after yielding)
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<POWERONSEG>
+; This is the first code that runs at power on.
+;
+;===============================================================================
+;<=IF DEBUG> KBeepOff
+   PermRecall
+   Push
+   GoIfXeq        0,_LNCHPermOk
+   GoIfXeq        1,_LNCHPermOk
+   SetS           LNCHsPermFail                       ;flag perm fail
+_LNCHPermOk
+
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<LAUNCHSEG>
+; This is run following the init segments
+;
+;===============================================================================
+   RunTasksForever                                    ;go run all tasks
+
+
+;===============================================================================
+;
+;<CODESEG>
+;PUBLIC FUNCTIONS
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; 
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+

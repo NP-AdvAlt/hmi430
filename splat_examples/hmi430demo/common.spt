@@ -1,0 +1,160 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Common stuff.
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+;-- colours --
+HUEkTransparent   #EQU  '00000000
+HUEkWhite         #EQU  'FFFFFFFF
+HUEkLightestGray  #EQU  'FFE0E0E0
+HUEkLightGray     #EQU  'FFC0C0C0
+HUEkGray          #EQU  'FF909090
+HUEkDarkGray      #EQU  'FF606060
+HUEkDarkDarkGray  #EQU  'FF303030
+HUEkNearlyBlack   #EQU  'FF101010
+HUEkBlack         #EQU  'FF000000
+
+HUEkBlue          #EQU  'FF0000C0
+HUEkPaleGreen     #EQU  'FFA0FFA0
+HUEkGreen         #EQU  'FF00FF00
+HUEkMedGreen      #EQU  'FF009000
+HUEkOrange        #EQU  'FFD06000
+HUEkPink          #EQU  'FFFF00FF
+HUEkPurple        #EQU  'FF9020C0
+HUEkRed           #EQU  'FFFF0000
+HUEkYellow        #EQU  'FFFFFF00
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+PMbFlags             mEQU  6
+PMsFlagsFarenheit    EQU   0
+PMsFlagsFanAuto      EQU   1
+PMsFlagsRelayAuto    EQU   2
+PMfTemperatureTrip   mEQU  7,4
+PMbBacklight         mEQU  11
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+;===============================================================================
+;DESCRIPTION:
+; Splits the temperature into whole and fractional parts.
+;PARAMETERS:
+;  -> W temperature
+;RETURNS:
+; <-  W: whole number part
+; <- fScratchA: fractional part, 10ths only
+;===============================================================================
+CMNsubSplitTemperature:
+   fLoadQ         -0.05
+   fGoIfNeg       _CMNDoRounding
+   fLoadQ         0.05
+_CMNDoRounding
+   fAdd                                               ;without rounding, 22.9 is converted to 22.8 as 0.9 gets weirded to 0.8999 in binary floating point
+   fStore         fScratchA
+   fWtoQ
+   fLoadW         1.0
+   GoSub          fIntDiv
+   WtoU           4                                   ;save the whole number
+   fRecallQ       fScratchA
+   fSub
+   fLoadQ         10
+   fMul
+   fWtoQ
+   fLoadW         1.0
+   GoSub          fIntDiv
+   fStore         fScratchA                           ;save the fraction
+   UtoW           4                                   ;recall the whole number
+   Return
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+
+
+

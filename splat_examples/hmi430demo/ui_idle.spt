@@ -1,0 +1,486 @@
+;===============================================================================
+;                               SPLat Controls.                                ;
+;                          Product Development Group                           ;
+;                            Melbourne,  AUSTRALIA                             ;
+;===============================================================================
+;PURPOSE:
+; Idle screen, display RTC and temperature
+;
+;===============================================================================
+;===============================================================================
+;           Copyright (c) 2014 SPLat Controls. All rights reserved.            ;
+;                                                                              ;
+;        THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF SPLat Controls.        ;
+;               The copyright notice above does not evidence any               ;
+;              actual or intended publication of such source code.             ;
+;===============================================================================
+
+;===============================================================================
+;
+;<INITSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<CONSTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<MEQUSEG>
+;RAM storage
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<IOSEG>
+;I/O Assignments
+;
+;===============================================================================
+ 
+
+;===============================================================================
+;
+;AUTOMATIC RAM
+;
+;===============================================================================
+;<DEF_SEM>
+
+;<DEF_BYTE>
+UIIbPrevSec       defBYTE
+UIIbPrevDOM       defBYTE
+
+;<DEF_WORD>
+
+;<DEF_TIME24>
+
+;<DEF_FLOAT>
+
+;<DEF_BLOCK>
+
+;===============================================================================
+;
+;<CODESEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;DESCRIPTION:
+; Called by any task to request display of this screen.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+UIsubScreenShowIdle:
+   LoadX          UIkScreenIdle
+   Goto           UIsubSetScreen
+
+
+;===============================================================================
+;DESCRIPTION:
+; Idle screen, displays time and temperature.  Touch anywhere to activate the
+; menu.
+;===============================================================================
+UIscreenIdle:
+   SetMem         UIIbPrevSec,255                     ;ensure time is displayed immediately
+   SetMem         UIIbPrevDOM,255                     ;ensure date is displayed immediately
+
+   #HMI           Reset( b:HUEkTransparent )          ;no colour
+   #HMI           SetBacklight( p:1 )                 ;ignore press when dim
+   #HMI           ButtonEvent2( x:0px, y:0px, w:480px, h:272px, m:"h1", ev:_UIIsubShowMenu )
+
+_UIILoop
+   Pause          10
+   GoIfST         UIsNewScreen,_UIINewScreen          ;jump if there's a new screen to display
+   GoSub          _UIIsubDispDate                     ;do the date first as it will clear the screen
+   GoSub          _UIIsubDispTime
+   GoSub          _UIIsubDispTherm
+   Goto           _UIILoop
+
+_UIINewScreen
+   #HMI           SetBacklight( p:0 )                 ;obey press when dim
+   Goto           UIDoNewScreen                       ;display the new screen
+
+
+;===============================================================================
+;DESCRIPTION:
+; Button callback, requests menu be shown.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_UIIsubShowMenu:
+   Goto           UIsubScreenShowMenu
+
+
+;===============================================================================
+;DESCRIPTION:
+; Displays the time & dow.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_UIIsubDispTime:
+   ;----------------
+   ;-- hours:minutes
+   ;----------------
+   #HMI           FreezeScreen( 1 )
+   RTCReadTime                                        ;get the time
+   RTCPushSS                                          ;has the time..
+   Recall         UIIbPrevSec
+   Compare                                            ;..changed?
+   GoIfZ          _UIIEndDispTime                     ;return if it hasn't
+   RTCPushSS                                          ;remember the time..
+   Store          UIIbPrevSec                         ;..we've displayed
+   #HMI           SetFont( f:"prop210.fon" );
+   #HMI           SetBounds( x:0px, y:0px, w:100%, h:170px )
+   #HMI           SetColours( f:HUEkWhite, b:HUEkBlack )
+   #HMI           Cls()
+   RTCPushHH
+   RTCPushMM
+   #HMI           SetCursor( x:5px, y:0 )
+   #HMI           SetColours( f:HUEkWhite, b:HUEkTransparent )
+   #HMI           Print( b(=y,2), ":", b(=x,2) )
+   #HMI           SetBounds()
+
+   ;----------
+   ;-- seconds
+   ;----------
+   NVSetPtr       UIIpSecPos                          ;position the seconds based..
+   NVSetRecLen    2
+   RTCPushMM                                          ;..(get the minutes)..
+   float                                              ;..(get the minute..
+   fWtoQ
+   fLoadW         10.0
+   GoSub          fMod                                ;..units)..
+   fix                                                ;..(use as the record index)..
+   NVPopRecNum                                        ;..(get the..
+   NVReadToPtr    0
+   NVSetRecNum    0
+   NVSetRecLen    4
+   NVfReadW       0                                   ;..x pos and..
+   NVfReadQ       4                                   ;..y pos) on the minute units
+   #HMI           SetFont( f:"ledseg35.fon" )         ;display the..
+   #HMI           SetColours( f:HUEkRed, b:HUEkTransparent )
+   ;#HMI           SetCursor( x:420px, y:180px )
+   #HMI           SetCursor( x:( f(=w,3,0), "px" ), y:( f(=q,3,0), "px" ) )
+   RTCPushSS
+   #HMI           Print( b(=x,2) )                    ;..seconds
+
+   ;--------------
+   ;-- day of week
+   ;--------------
+   #HMI           SetFont( f:"prop70.fon" );
+   #HMI           SetBounds( x:3px, b:118px, w:100%, h:1 )     ;display the..
+   #HMI           SetColours( f:'A0000000, b:HUEkTransparent )
+   RTCPushDN
+   #HMI           Print( "\C", nz( UIIpDOW, =x ) )             ;..DOW shadow
+   #HMI           SetBounds( x:0px, b:115px, w:100%, h:1 )     ;display the..
+   #HMI           SetColours( f:'8000C0E0, b:HUEkTransparent )
+   #HMI           Print( "\C", nz( UIIpDOW, =x ) )             ;..DOW
+   #HMI           SetBounds()
+
+_UIIEndDispTime
+   #HMI           FreezeScreen( 0 )
+
+   YieldTask
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Display the date.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_UIIsubDispDate:
+   RTCReadDate                                        ;get the date
+   RTCPushSS                                          ;has the day..
+   Recall         UIIbPrevDOM
+   Compare                                            ;..changed?
+   RetIfZ                                             ;return if it hasn't
+   RTCPushSS                                          ;remember the date..
+   Store          UIIbPrevDOM                         ;..we've displayed
+   #HMI           Cls()
+
+   ;---------------
+   ;-- day of month
+   ;---------------
+   #HMI           SetFont( f:"mono120.fon" );
+   #HMI           SetColours( f:HUEkWhite )
+   #HMI           SetCursor( x:0px, y:270px )
+   RTCPushSS
+   Push
+   GoIfXgt        9,_UIIDispDOM
+   #HMI           Print( " " );
+_UIIDispDOM
+   #HMI           Print( b(=x) )
+
+   ;-----------------
+   ;-- ordinal suffix
+   ;-----------------
+   #HMI           SetFont( "prop25.fon" )
+   #HMI           CursorRel( x:-0.5, y:0 )
+   RTCPushSS
+   Push
+   GoIfXeq        1,_UIIOrdST
+   Push
+   GoIfXeq        2,_UIIOrdND
+   Push
+   GoIfXeq        3,_UIIOrdRD
+   Push
+   GoIfXeq        21,_UIIOrdST
+   Push
+   GoIfXeq        22,_UIIOrdND
+   Push
+   GoIfXeq        23,_UIIOrdRD
+   Push
+   GoIfXeq        31,_UIIOrdST
+_UIIOrdTH
+   #HMI           Print( "th" )
+   Goto           _UIIDispMon
+_UIIOrdST
+   #HMI           Print( "st" )
+   Goto           _UIIDispMon
+_UIIOrdND
+   #HMI           Print( "nd" )
+   Goto           _UIIDispMon
+_UIIOrdRD
+   #HMI           Print( "rd" )
+   Goto           _UIIDispMon
+
+   ;--------
+   ;-- month
+   ;--------
+_UIIDispMon
+   #HMI           SetFont( f:"prop35.fon" )
+   #HMI           SetBounds( x:0px, b:215px, w:305px, h:90 )
+   RTCPushMM
+   #HMI           Print( "\R", nz( UIIpMonth, =x ) )
+
+   ;-------
+   ;-- month num & year
+   ;-------
+   #HMI           SetCursor( x:0px, y:70px )
+   RTCPushHH
+   #HMI           Print( "\R20", b(=x,2) )
+   #HMI           SetColours( f:HUEkDarkGray )
+   RTCPushMM
+   #HMI           SetFont( f:"prop25.fon" )
+   #HMI           Print( "\R\R", b(=x), "/" )
+   #HMI           SetColours( f:HUEkWhite )
+   #HMI           SetBounds()
+
+   YieldTask
+   Return
+
+
+;===============================================================================
+;DESCRIPTION:
+; Displays either NN.n or NNN if the temperature is over 100, or -ve.
+;PARAMETERS:
+;  -> Nil
+;RETURNS:
+; <-  Nil
+;===============================================================================
+_UIIsubDispTherm:
+   #HMI           FreezeScreen( 1 )
+   #HMI           SetColours( f:HUEkWhite, b:HUEkBlack )
+   #HMI           SetFont( f:"mono60.fon" );
+   #HMI           SetBounds( x:335px, b:245px, w:146px, h:1 )
+   #HMI           Cls()
+   GoSub          THERMsubGetTemperature
+   fLoadQ         -999.0                              ;is the sensor missing?
+   fGoIfWltQ      _UIIEndDispTherm                    ;yes, so jump
+   fGoIfNeg       _UII3digits                         ;jump if -ve..
+   GoSub          CMNsubSplitTemperature
+   fLoadQ         100.0
+   fGoIfWgeQ      _UII3digits                         ;..or over 100°
+   #HMI           Print( f(=W,2,0) )
+   #HMI           SetFont( f:"mono35.fon" );
+   #HMI           Print( ".", f(*fScratchA,1,0), "°" )
+   Goto           _UIIEndDispTherm
+_UII3digits
+   #HMI           Print( f(=W,3,0), "°" )
+_UIIEndDispTherm
+   #HMI           SetBounds()
+   #HMI           FreezeScreen( 0 )
+   Return
+
+
+;===============================================================================
+;
+;<DEBUG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<TESTSEG>
+;
+;===============================================================================
+
+
+;===============================================================================
+;
+;<NVEM0DIR>
+;
+;===============================================================================
+   NVEM0                                              ;Start of non-volatile memory
+
+
+;===============================================================================
+;
+;<NVEM0DATA>
+;Non-volatile memory data
+;
+;===============================================================================
+UIIpDummy   NV0Byte  "Oops",0
+
+;-- English
+UIIpEnMon   NV0Byte  "Monday",0
+UIIpEnTue   NV0Byte  "Tuesday",0
+UIIpEnWed   NV0Byte  "Wednesday",0
+UIIpEnThr   NV0Byte  "Thursday",0
+UIIpEnFri   NV0Byte  "Friday",0
+UIIpEnSat   NV0Byte  "Saturday",0
+UIIpEnSun   NV0Byte  "Sunday",0
+
+UIIpDOW
+   NV0Ptr   UIIpEnMon
+   NV0Ptr   UIIpEnTue
+   NV0Ptr   UIIpEnWed
+   NV0Ptr   UIIpEnThr
+   NV0Ptr   UIIpEnFri
+   NV0Ptr   UIIpEnSat
+   NV0Ptr   UIIpEnSun
+
+
+UIIpEnJan   NV0Byte  "January",0
+UIIpEnFeb   NV0Byte  "February",0
+UIIpEnMar   NV0Byte  "March",0
+UIIpEnApr   NV0Byte  "April",0
+UIIpEnMay   NV0Byte  "May",0
+UIIpEnJun   NV0Byte  "June",0
+UIIpEnJul   NV0Byte  "July",0
+UIIpEnAug   NV0Byte  "August",0
+UIIpEnSep   NV0Byte  "September",0
+UIIpEnOct   NV0Byte  "October",0
+UIIpEnNov   NV0Byte  "November",0
+UIIpEnDec   NV0Byte  "December",0
+
+UIIpMonth
+   NV0Ptr   UIIpDummy                                 ; 0 isn't used, months start at 1
+   NV0Ptr   UIIpEnJan
+   NV0Ptr   UIIpEnFeb
+   NV0Ptr   UIIpEnMar
+   NV0Ptr   UIIpEnApr
+   NV0Ptr   UIIpEnMay
+   NV0Ptr   UIIpEnJun
+   NV0Ptr   UIIpEnJul
+   NV0Ptr   UIIpEnAug
+   NV0Ptr   UIIpEnSep
+   NV0Ptr   UIIpEnOct
+   NV0Ptr   UIIpEnNov
+   NV0Ptr   UIIpEnDec
+
+UIIpEnJan3  NV0Byte  "Jan",0
+UIIpEnFeb3  NV0Byte  "Feb",0
+UIIpEnMar3  NV0Byte  "Mar",0
+UIIpEnApr3  NV0Byte  "Apr",0
+UIIpEnMay3  NV0Byte  "May",0
+UIIpEnJun3  NV0Byte  "Jun",0
+UIIpEnJul3  NV0Byte  "Jul",0
+UIIpEnAug3  NV0Byte  "Aug",0
+UIIpEnSep3  NV0Byte  "Sep",0
+UIIpEnOct3  NV0Byte  "Oct",0
+UIIpEnNov3  NV0Byte  "Nov",0
+UIIpEnDec3  NV0Byte  "Dec",0
+
+UIIpMon
+   NV0Ptr   UIIpDummy                                 ; 0 isn't used, months start at 1
+   NV0Ptr   UIIpEnJan3
+   NV0Ptr   UIIpEnFeb3
+   NV0Ptr   UIIpEnMar3
+   NV0Ptr   UIIpEnApr3
+   NV0Ptr   UIIpEnMay3
+   NV0Ptr   UIIpEnJun3
+   NV0Ptr   UIIpEnJul3
+   NV0Ptr   UIIpEnAug3
+   NV0Ptr   UIIpEnSep3
+   NV0Ptr   UIIpEnOct3
+   NV0Ptr   UIIpEnNov3
+   NV0Ptr   UIIpEnDec3
+
+
+
+;-- Spanish
+UIIpEsMon   NV0Byte  "Lunes",0
+UIIpEsTue   NV0Byte  "Martes",0
+UIIpEsWed   NV0Byte  "Miércoles",0
+UIIpEsThr   NV0Byte  "Jueves",0
+UIIpEsFri   NV0Byte  "Viernes",0
+UIIpEsSat   NV0Byte  "Sábado",0
+UIIpEsSun   NV0Byte  "Domingo",0
+
+UIIpEsJan   NV0Byte  "enero",0
+UIIpEsFeb   NV0Byte  "febrero",0
+UIIpEsMar   NV0Byte  "marzo",0
+UIIpEsApr   NV0Byte  "abril",0
+UIIpEsMay   NV0Byte  "mayo",0
+UIIpEsJun   NV0Byte  "junio",0
+UIIpEsJul   NV0Byte  "julio",0
+UIIpEsAug   NV0Byte  "agosto",0
+UIIpEsSep   NV0Byte  "septiembre",0
+UIIpEsOct   NV0Byte  "octubre",0
+UIIpEsNov   NV0Byte  "noviembre",0
+UIIpEsDec   NV0Byte  "diciembre",0
+
+
+;-- seconds position
+UIIpZero    NV0fNum  405
+            NV0fNum  95
+UIIpOne     NV0fNum  370
+            NV0fNum  140
+UIIpTwo     NV0fNum  380
+            NV0fNum  75
+UIIpThree   NV0fNum  390
+            NV0fNum  120
+UIIpFour    NV0fNum  385
+            NV0fNum  145
+UIIpFive    NV0fNum  390
+            NV0fNum  120
+UIIpSix     NV0fNum  405
+            NV0fNum  120
+UIIpSeven   NV0fNum  380
+            NV0fNum  65
+UIIpEight   NV0fNum  405
+            NV0fNum  125
+UIIpNine    NV0fNum  405
+            NV0fNum  67
+
+UIIpSecPos
+            NV0Ptr   UIIpZero 
+            NV0Ptr   UIIpOne  
+            NV0Ptr   UIIpTwo  
+            NV0Ptr   UIIpThree
+            NV0Ptr   UIIpFour 
+            NV0Ptr   UIIpFive 
+            NV0Ptr   UIIpSix  
+            NV0Ptr   UIIpSeven
+            NV0Ptr   UIIpEight
+            NV0Ptr   UIIpNine 
+
